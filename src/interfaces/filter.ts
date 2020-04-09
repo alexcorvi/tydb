@@ -117,7 +117,7 @@ export interface TopLevelQueryOperators<Schema> {
 
 	/**
 	 * Use this operator when trying to apply filter on a deeply nested properties, like: "employee.address.street".
-	 * {$deep: {"employee.address.street": "Bedford Mount"}}
+	 * {$deep: {"employee.address.street": {$eq: "Bedford Mount"}}}
 	 */
 	$deep?: {
 		[key: string]: FieldLevelQueryOperators<any>;
