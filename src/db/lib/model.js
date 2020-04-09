@@ -736,6 +736,10 @@ function areComparable(a, b) {
  * @param {Native value} a Value in the object
  * @param {Native value} b Value in the query
  */
+comparisonFunctions.$eq = function (a, b) {
+	return a === b;
+};
+
 comparisonFunctions.$lt = function (a, b) {
 	return areComparable(a, b) && a < b;
 };
