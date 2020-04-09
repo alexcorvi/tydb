@@ -457,8 +457,66 @@ describe("Actions", async () => {
 							);
 						});
 					});
+					describe("Deep filtering", () => {
+						before(async () => {
+							await db.insert({
+								doc: {
+									a: 0,
+									b: {
+										c: 10,
+										d: 0,
+									},
+								},
+							});
+							await db.insert({
+								doc: {
+									a: 0,
+									b: {
+										c: 100,
+										d: 0,
+									},
+								},
+							});
+						});
+						it("Find the two documents", async () => {
+							expect(
+								(
+									await db.find({
+										filter: {
+											a: 0,
+											$deep: { "b.d": { $eq: 0 } },
+										},
+									})
+								).length
+							).toBe(2);
+						});
+						it("Find one document", async () => {
+							expect(
+								(
+									await db.find({
+										filter: {
+											a: 0,
+											$deep: { "b.c": { $eq: 10 } },
+										},
+									})
+								).length
+							).toBe(1);
+						});
+						it("Find the other document", async () => {
+							expect(
+								(
+									await db.find({
+										filter: {
+											$deep: { "b.c": { $eq: 100 } },
+										},
+									})
+								).length
+							).toBe(1);
+						});
+					});
 				});
 
+				return;
 				describe("Updating", () => {
 					describe("updating with filters found");
 					describe("deep update");
