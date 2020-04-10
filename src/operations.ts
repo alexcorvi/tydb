@@ -282,6 +282,10 @@ export class Operations<S> {
 	 * Aliases
 	 *
 	 */
+	query(filter: Filter<FullSchema<S>>) {
+		return this.read({ filter });
+	}
+
 	find = this.read;
 	insert = this.createOne;
 	insertOne = this.createOne;
