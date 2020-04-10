@@ -551,20 +551,414 @@ describe("Actions", async () => {
 
 				// result
 				// total 35
-				return;
 				describe("Updating", () => {
 					before(async () => {
-						//						db.insertOne({ doc: {} });
+						db.insertOne({
+							doc: {
+								a: 5,
+								x: Math.random(),
+								b: {
+									c: 10,
+									d: 15,
+								},
+							},
+						});
 					});
-					describe("updating with filters found", () => {});
-					describe("updating with filters not found", () => {});
-					describe("deep update", () => {});
-					describe("deep update with deep filters", () => {});
+					describe("number of updates", () => {
+						describe("update one actually updates one", () => {
+							it("Counting should be equal to 11", async () => {
+								expect(
+									await db.count({ filter: { a: 2 } })
+								).toBe(11);
+							});
+							it("updating one", async () => {
+								expect(
+									(
+										await db.updateOne({
+											filter: { a: 2 },
+											update: { $set: { a: 22 } },
+										})
+									).n
+								).toBe(1);
+							});
+							it("Counting updated", async () => {
+								expect(
+									await db.count({ filter: { a: 22 } })
+								).toBe(1);
+							});
+							it("Counting remaining", async () => {
+								expect(
+									await db.count({ filter: { a: 2 } })
+								).toBe(10);
+							});
+							it("Reverse", async () => {
+								expect(
+									(
+										await db.updateOne({
+											filter: { a: 22 },
+											update: { $set: { a: 2 } },
+										})
+									).n
+								).toBe(1);
+							});
+						});
+						describe("update many actually updates many", () => {
+							it("Counting should be equal to 11", async () => {
+								expect(
+									await db.count({ filter: { a: 2 } })
+								).toBe(11);
+							});
+							it("updating many", async () => {
+								expect(
+									(
+										await db.updateMany({
+											filter: { a: 2 },
+											update: { $set: { a: 22 } },
+										})
+									).n
+								).toBe(11);
+							});
+							it("Counting updated", async () => {
+								expect(
+									await db.count({ filter: { a: 22 } })
+								).toBe(11);
+							});
+							it("Counting remaining", async () => {
+								expect(
+									await db.count({ filter: { a: 2 } })
+								).toBe(0);
+							});
+							it("Reverse", async () => {
+								expect(
+									(
+										await db.updateMany({
+											filter: { a: 22 },
+											update: { $set: { a: 2 } },
+										})
+									).n
+								).toBe(11);
+							});
+						});
+					});
+					describe("updating with filters found", () => {
+						describe("Update many", () => {
+							it("{a:0}", async () => {
+								const res = await db.updateMany({
+									filter: { a: 0 },
+									update: {
+										$set: {
+											x: 999,
+										},
+									},
+								});
+								expect(res.n).toBe(13);
+								expect(
+									(
+										await db.find({
+											filter: { a: 0, x: 999 },
+										})
+									).length
+								).toBe(13);
+							});
+							it("{a:1}", async () => {
+								const res = await db.updateMany({
+									filter: { a: 1 },
+									update: {
+										$set: {
+											x: 888,
+										},
+									},
+								});
+								expect(res.n).toBe(11);
+								expect(
+									(
+										await db.find({
+											filter: { a: 1, x: 888 },
+										})
+									).length
+								).toBe(11);
+							});
+							it("{a:2}", async () => {
+								const res = await db.updateMany({
+									filter: { a: 2 },
+									update: {
+										$set: {
+											x: 777,
+										},
+									},
+								});
+								expect(res.n).toBe(11);
+								expect(
+									(
+										await db.find({
+											filter: { a: 2, x: 777 },
+										})
+									).length
+								).toBe(11);
+							});
+						});
+					});
+					describe("updating with filters not found", () => {
+						it("number of affected should be 0", async () => {
+							const res = await db.updateMany({
+								filter: { a: 2, x: 999 },
+								update: { $set: { x: -99 } },
+							});
+							expect(res.n).toBe(0);
+						});
+						it("affected should be an empty array", async () => {
+							const res = await db.updateMany({
+								filter: { a: 1, x: 777 },
+								update: { $set: { x: -99 } },
+							});
+							expect(JSON.stringify(res.affected)).toBe(
+								JSON.stringify([])
+							);
+						});
+					});
+					describe("deep update", () => {
+						it("should update", async () => {
+							const res = await db.updateOne({
+								filter: { a: 5 },
+								update: {
+									$set: {
+										$deep: {
+											"b.c": 11,
+										},
+									},
+								},
+							});
+							expect(res.n).toBe(1);
+							expect(res.affected).toBeTruthy();
+						});
+
+						it("Look for the updated", async () => {
+							const res = await db.find({
+								filter: { a: 5, $deep: { "b.c": { $eq: 11 } } },
+							});
+							expect(res.length).toBe(1);
+							expect(res[0].a).toBe(5);
+							expect((res[0] as any).b.c).toBe(11);
+							expect((res[0] as any).b.d).toBe(15);
+						});
+					});
+					describe("deep update with deep filters", () => {
+						it("Should update", async () => {
+							const res = await db.updateMany({
+								filter: {
+									$deep: {
+										"b.d": {
+											$eq: 15,
+										},
+									},
+								},
+								update: {
+									$set: {
+										$deep: {
+											"b.c": 1992,
+										},
+									},
+								},
+							});
+
+							expect(res.n).toBe(1);
+						});
+						it("Look for the updated", async () => {
+							const res = await db.find({
+								filter: { $deep: { "b.c": { $eq: 1992 } } },
+							});
+							expect(res.length).toBe(1);
+							expect(res[0].a).toBe(5);
+							expect((res[0] as any).b.d).toBe(15);
+							expect((res[0] as any).b.c).toBe(1992);
+						});
+					});
 				});
-				describe("Upserting", () => {});
-				describe("Counting", () => {});
-				describe("Removing", () => {});
-				describe("Dropping", () => {});
+				// total docs in DB 36
+
+				describe("Upserting", () => {
+					describe("with upsertOne", () => {
+						describe("Using upsert with a non-existent document", () => {
+							it("Document should be upserted", async () => {
+								const res = await db.upsertOne({
+									filter: { a: -999 },
+									doc: {
+										a: -999,
+										x: Math.random() * -1,
+										b: {
+											c: -2,
+											d: -3,
+										},
+									},
+								});
+								expect(res.n).toBe(1);
+								expect(res.upsert).toBe(true);
+								let r = (res.affected as any).x;
+								const findRes = await db.find({
+									filter: { x: r },
+								});
+								expect(findRes.length).toBe(1);
+								expect(findRes[0].a).toBe(-999);
+								expect(findRes[0].x).toBe(r);
+								expect((findRes[0] as any).b.c).toBe(-2);
+								expect((findRes[0] as any).b.d).toBe(-3);
+							});
+						});
+						describe("Using upsert with an already existing document", () => {
+							it("Document should not be upserted", async () => {
+								const res = await db.upsertOne({
+									filter: { a: -999 },
+									doc: {
+										a: -999,
+										x: Math.random() * -1,
+										b: {
+											c: -2,
+											d: -5,
+										},
+									},
+								});
+								expect(res.n).toBe(1);
+								expect(res.upsert).toBe(false);
+								let r = (res.affected as any).x;
+								const findRes = await db.find({
+									filter: { x: r },
+								});
+								expect(findRes.length).toBe(1);
+								expect(findRes[0].a).toBe(-999);
+								expect(findRes[0].x).toBe(r);
+								expect((findRes[0] as any).b.c).toBe(-2);
+								expect((findRes[0] as any).b.d).toBe(-5);
+							});
+						});
+					});
+					describe("with upsertMany", () => {
+						describe("Using upsert with a non-existent document", () => {
+							it("Document should be upserted", async () => {
+								const res = await db.upsertMany({
+									filter: { a: -1999 },
+									doc: {
+										a: -999,
+										x: Math.random() * -1,
+									},
+								});
+								expect(res.n).toBe(1);
+								expect(res.upsert).toBe(true);
+								let r = res.affected[0].x;
+								const findRes = await db.find({
+									filter: { x: r },
+								});
+								expect(findRes.length).toBe(1);
+								expect(findRes[0].a).toBe(-999);
+								expect(findRes[0].x).toBe(r);
+							});
+						});
+						describe("Using upsert with an already existing document", () => {
+							it("Document should not be upserted", async () => {
+								const res = await db.upsertMany({
+									filter: { a: -999 },
+									doc: {
+										a: -999,
+										x: Math.random() * -1,
+										b: {
+											c: -2,
+											d: -5,
+										},
+									},
+								});
+								expect(res.n).toBe(2);
+								expect(res.upsert).toBe(false);
+								let r = res.affected[0].x;
+								const findRes = await db.find({
+									filter: { x: r },
+								});
+								expect(findRes.length).toBe(2);
+								expect(findRes[0].a).toBe(-999);
+								expect(findRes[0].x).toBe(r);
+							});
+						});
+					});
+				});
+				describe("Removing", () => {
+					describe("Removing one document", () => {
+						before(async () => {
+							await db.insertMany({
+								docs: [
+									{
+										a: 1234,
+										x: 5678,
+									},
+									{
+										a: 1234,
+										x: 5678,
+									},
+								],
+							});
+						});
+						it("Should remove only one", async () => {
+							const res = await db.removeOne({
+								filter: { a: 1234 },
+							});
+							expect(res.n).toBe(1);
+						});
+						it("the other one is not removed", async () => {
+							expect(
+								await db.count({ filter: { a: 1234 } })
+							).toBe(1);
+						});
+					});
+					describe("Removing multiple by deep filter", () => {
+						before(async () => {
+							await db.insertMany({
+								docs: [
+									{
+										a: 247,
+										x: 247,
+										b: {
+											c: 10,
+											d: 247,
+										},
+									},
+									{
+										a: 247,
+										x: 247,
+										b: {
+											c: 101,
+											d: 247,
+										},
+									},
+								],
+							});
+						});
+						it("Should remove all", async () => {
+							const res = await db.removeMany({
+								filter: { $deep: { "b.d": { $eq: 247 } } },
+							});
+							expect(res.n).toBe(2);
+						});
+						it("the other one is not removed", async () => {
+							expect(await db.count({ filter: { a: 247 } })).toBe(
+								0
+							);
+						});
+					});
+				});
+				describe("Dropping", () => {
+					it("Dropping must be supplied with db name", () => {
+						expect(
+							db.drop({ dbName: "not-the-name" }).catch()
+						).rejects.toEqual(
+							new Error(
+								"Supplied name of the database is not correct"
+							)
+						);
+					});
+					it("Dropping deletes all the database", async () => {
+						expect(
+							(await db.drop({ dbName: db.name })).n
+						).toBeGreaterThan(0);
+						expect(await db.count({})).toBe(0);
+					});
+				});
 			});
 		}
 
