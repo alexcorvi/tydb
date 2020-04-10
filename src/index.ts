@@ -15,9 +15,10 @@ export class Database<Schema> extends Operations<Schema> {
 		if (typeof options === "string") {
 			options = {
 				filename: options,
+				timestampData: true,
 			};
 		}
-		const nedb = new _NEDB(options);
+		const nedb = new _NEDB(Object.assign(options, { timestampData: true }));
 		super(nedb, options.filename);
 		this._database = nedb;
 		this.name = options.filename;
