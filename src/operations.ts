@@ -121,6 +121,9 @@ export class Operations<S> {
 	}): Promise<OperatedMany<FullSchema<S>>> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
+		if (update.$set) {
+			update.$set = fixDeep(update.$set);
+		}
 		return new Promise(async (resolve, reject) => {
 			(await this._connect()).update<FullSchema<S>>(
 				filter,
@@ -158,6 +161,9 @@ export class Operations<S> {
 	}): Promise<OperatedOne<FullSchema<S>> & { upsert: boolean }> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
+		if (update.$set) {
+			update.$set = fixDeep(update.$set);
+		}
 		return new Promise(async (resolve, reject) => {
 			(await this._connect()).update<FullSchema<S>>(
 				filter,

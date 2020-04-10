@@ -53,7 +53,13 @@ export interface UpdateOperators<Schema> {
 	 * Sets the value of a field in a document.
 	 * { $set: { <field1>: <value1>, ... } }
 	 */
-	$set?: Partial<Schema>;
+	$set?: Partial<
+		Schema & {
+			$deep: {
+				[key: string]: any;
+			};
+		}
+	>;
 	/**
 	 * Removes the specified field from a document.
 	 * { $unset: { <field1>: "", ... } }
