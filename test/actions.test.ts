@@ -111,7 +111,14 @@ describe("Actions", async () => {
 	});
 
 	describe("Database actions", () => {
-		async function testDBActions(db: Database<any>, flag: string) {
+		async function testDBActions(
+			db: Database<{
+				a: number;
+				b?: { c: number; d: number };
+				x: number;
+			}>,
+			flag: string
+		) {
 			describe(`database: ${db.name}, connection flag: ${flag}`, () => {
 				describe("Dropping the old data in favor of a new clean DB", () => {
 					it("Should drop successfully", async () => {
@@ -461,6 +468,7 @@ describe("Actions", async () => {
 						before(async () => {
 							await db.insert({
 								doc: {
+									x: 0,
 									a: 0,
 									b: {
 										c: 10,
@@ -470,6 +478,7 @@ describe("Actions", async () => {
 							});
 							await db.insert({
 								doc: {
+									x: 0,
 									a: 0,
 									b: {
 										c: 100,
