@@ -117,7 +117,7 @@ export class Operations<S> {
 		update,
 	}: {
 		filter: Filter<FullSchema<S>>;
-		update: UpdateOperators<InputSchema<S>>;
+		update: UpdateOperators<FullSchema<S>>;
 	}): Promise<OperatedMany<FullSchema<S>>> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
