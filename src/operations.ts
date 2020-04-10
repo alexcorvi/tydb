@@ -337,7 +337,7 @@ export class Operations<S> {
 		dbName,
 	}: {
 		dbName: string;
-	}): Promise<OperatedMany<FullSchema<S>>> {
+	}): Promise<{ n: number; affected: never[] }> {
 		if (this._dbName !== dbName) {
 			throw new Error("Supplied name of the database is not correct");
 		}
