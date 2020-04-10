@@ -1,5 +1,7 @@
 "use strict";
-var customUtils = require("./customUtils"), model = require("./model"), async = require("async"), Executor = require("./executor"), Index = require("./indexes"), util = require("util"), _ = require("underscore"), Persistence = require("./persistence"), Cursor = require("./cursor");
+Object.defineProperty(exports, "__esModule", { value: true });
+const executor_1 = require("./executor");
+var customUtils = require("./customUtils"), model = require("./model"), async = require("async"), Index = require("./indexes"), util = require("util"), _ = require("underscore"), Persistence = require("./persistence"), Cursor = require("./cursor");
 /**
  * Create a new collection
  * @param {String} options.filename Optional, datastore will be in-memory only if not provided
@@ -50,7 +52,7 @@ function Datastore(options) {
     });
     // This new executor is ready if we don't use persistence
     // If we do, it will only be ready once loadDatabase is called
-    this.executor = new Executor();
+    this.executor = new executor_1.Executor();
     if (this.inMemoryOnly) {
         this.executor.ready = true;
     }

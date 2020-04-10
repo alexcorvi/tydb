@@ -1,7 +1,8 @@
+import { Executor } from "./executor";
+
 var customUtils = require("./customUtils"),
 	model = require("./model"),
 	async = require("async"),
-	Executor = require("./executor"),
 	Index = require("./indexes"),
 	util = require("util"),
 	_ = require("underscore"),
