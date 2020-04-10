@@ -1,4 +1,5 @@
 import { _NEDB } from "./db";
+import { FullSchema, InputSchema } from "./interfaces/base-schema";
 import { SchemaKeyProjection, SchemaKeySort } from "./interfaces/filter";
 import { unlink } from "fs";
 import * as path from "path";
@@ -12,17 +13,17 @@ import {
 	OperatedOne,
 } from "./interfaces";
 
-export class Operations<Schema> {
-	private _nedbBase: _NEDB<Schema>;
+export class Operations<S> {
+	private _nedbBase: _NEDB<InputSchema<S>>;
 	private _dbName: string;
 
-	constructor(_nedb: _NEDB<Schema>, name: string) {
+	constructor(_nedb: _NEDB<InputSchema<S>>, name: string) {
 		this._nedbBase = _nedb;
 		this._dbName = name;
 	}
 
 	private _connect() {
-		return new Promise<_NEDB<Schema>>((resolve, reject) => {
+		return new Promise<_NEDB<InputSchema<S>>>((resolve, reject) => {
 			this._nedbBase.loadDatabase((e) => {
 				if (e) {
 					throw e;
@@ -38,14 +39,14 @@ export class Operations<Schema> {
 	public async createOne({
 		doc,
 	}: {
-		doc: Schema;
-	}): Promise<OperatedOne<Schema> & { affected: Schema }> {
+		doc: InputSchema<S>;
+	}): Promise<OperatedOne<FullSchema<S>> & { affected: FullSchema<S> }> {
 		return new Promise(async (resolve, reject) => {
 			(await this._connect()).insert([doc], (err, res) => {
 				if (err) return reject(err);
 				resolve({
 					n: res.length,
-					affected: res[0],
+					affected: res[0] as FullSchema<S>,
 				});
 			});
 		});
@@ -57,14 +58,14 @@ export class Operations<Schema> {
 	public async createMany({
 		docs,
 	}: {
-		docs: Schema[];
-	}): Promise<OperatedMany<Schema>> {
+		docs: InputSchema<S>[];
+	}): Promise<OperatedMany<FullSchema<S>>> {
 		return new Promise(async (resolve, reject) => {
 			(await this._connect()).insert(docs, (err, res) => {
 				if (err) return reject(err);
 				resolve({
 					n: res.length,
-					affected: res,
+					affected: res as FullSchema<S>[],
 				});
 			});
 		});
@@ -80,14 +81,14 @@ export class Operations<Schema> {
 		project,
 		sort = undefined,
 	}: {
-		filter?: Filter<Schema>;
+		filter?: Filter<FullSchema<S>>;
 		skip?: number;
 		limit?: number;
-		sort?: SchemaKeySort<Schema>;
-		project?: SchemaKeyProjection<Schema>;
-	}): Promise<Schema[]> {
+		sort?: SchemaKeySort<FullSchema<S>>;
+		project?: SchemaKeyProjection<FullSchema<S>>;
+	}): Promise<FullSchema<S>[]> {
 		filter = fixDeep(filter || {});
-		const cursor = (await this._connect()).find<Schema>(filter);
+		const cursor = (await this._connect()).find<FullSchema<S>>(filter);
 		if (sort) {
 			cursor.sort(sort);
 		}
@@ -115,13 +116,13 @@ export class Operations<Schema> {
 		filter,
 		update,
 	}: {
-		filter: Filter<Schema>;
-		update: UpdateOperators<Schema>;
-	}): Promise<OperatedMany<Schema>> {
+		filter: Filter<FullSchema<S>>;
+		update: UpdateOperators<InputSchema<S>>;
+	}): Promise<OperatedMany<FullSchema<S>>> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
 		return new Promise(async (resolve, reject) => {
-			(await this._connect()).update<Schema>(
+			(await this._connect()).update<FullSchema<S>>(
 				filter,
 				update,
 				{
@@ -151,14 +152,14 @@ export class Operations<Schema> {
 		update,
 		upsert = false,
 	}: {
-		filter: Filter<Schema>;
-		update: UpdateOperators<Schema>;
+		filter: Filter<FullSchema<S>>;
+		update: UpdateOperators<FullSchema<S>>;
 		upsert: boolean;
-	}): Promise<OperatedOne<Schema> & { upsert: boolean }> {
+	}): Promise<OperatedOne<FullSchema<S>> & { upsert: boolean }> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
 		return new Promise(async (resolve, reject) => {
-			(await this._connect()).update<Schema>(
+			(await this._connect()).update<FullSchema<S>>(
 				filter,
 				update,
 				{
@@ -189,8 +190,8 @@ export class Operations<Schema> {
 	public async deleteMany({
 		filter,
 	}: {
-		filter: Filter<Schema>;
-	}): Promise<OperatedMany<Schema>> {
+		filter: Filter<FullSchema<S>>;
+	}): Promise<OperatedMany<FullSchema<S>>> {
 		filter = fixDeep(filter || {});
 		const doc = await this.find({ filter });
 		return new Promise(async (resolve, reject) => {
@@ -216,8 +217,8 @@ export class Operations<Schema> {
 	public async deleteOne({
 		filter,
 	}: {
-		filter: Filter<Schema>;
-	}): Promise<OperatedOne<Schema>> {
+		filter: Filter<FullSchema<S>>;
+	}): Promise<OperatedOne<FullSchema<S>>> {
 		filter = fixDeep(filter || {});
 		const doc = await this.find({ filter });
 		return new Promise(async (resolve, reject) => {
@@ -243,7 +244,7 @@ export class Operations<Schema> {
 	public async count({
 		filter,
 	}: {
-		filter?: Filter<Schema>;
+		filter?: Filter<FullSchema<S>>;
 	} = {}): Promise<number> {
 		filter = fixDeep(filter || {});
 		return new Promise(async (resolve, reject) => {
@@ -258,7 +259,7 @@ export class Operations<Schema> {
 		dbName,
 	}: {
 		dbName: string;
-	}): Promise<OperatedMany<Schema>> {
+	}): Promise<OperatedMany<FullSchema<S>>> {
 		if (this._dbName !== dbName) {
 			throw new Error("Supplied name of the database is not correct");
 		}
