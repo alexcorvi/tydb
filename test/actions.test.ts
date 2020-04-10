@@ -148,8 +148,14 @@ describe("Actions", async () => {
 										index++
 									) {
 										delete res.affected[index]._id;
+										delete res.affected[index].createdAt;
+										delete res.affected[index].updatedAt;
 									}
-								} else delete res.affected._id;
+								} else {
+									delete res.affected._id;
+									delete res.affected.createdAt;
+									delete res.affected.updatedAt;
+								}
 								expect(JSON.stringify(res.affected)).toBe(
 									JSON.stringify(doc)
 								);
@@ -171,6 +177,8 @@ describe("Actions", async () => {
 										index++
 									) {
 										delete res.affected[index]._id;
+										delete res.affected[index].createdAt;
+										delete res.affected[index].updatedAt;
 									}
 								}
 								expect(JSON.stringify(res.affected)).toBe(
@@ -194,8 +202,14 @@ describe("Actions", async () => {
 										index++
 									) {
 										delete res.affected[index]._id;
+										delete res.affected[index].createdAt;
+										delete res.affected[index].updatedAt;
 									}
-								} else delete res.affected._id;
+								} else {
+									delete res.affected._id;
+									delete res.affected.createdAt;
+									delete res.affected.updatedAt;
+								}
 								expect(JSON.stringify(res.affected)).toBe(
 									JSON.stringify(doc)
 								);
@@ -217,8 +231,14 @@ describe("Actions", async () => {
 										index++
 									) {
 										delete res.affected[index]._id;
+										delete res.affected[index].createdAt;
+										delete res.affected[index].updatedAt;
 									}
-								} else delete res.affected._id;
+								} else {
+									delete res.affected._id;
+									delete res.affected.createdAt;
+									delete res.affected.updatedAt;
+								}
 								expect(JSON.stringify(res.affected)).toBe(
 									JSON.stringify(doc)
 								);
@@ -240,6 +260,8 @@ describe("Actions", async () => {
 										index++
 									) {
 										delete res.affected[index]._id;
+										delete res.affected[index].createdAt;
+										delete res.affected[index].updatedAt;
 									}
 								}
 								expect(JSON.stringify(res.affected)).toBe(
@@ -401,6 +423,8 @@ describe("Actions", async () => {
 											await db.read({
 												project: {
 													_id: 0,
+													createdAt: 0,
+													updatedAt: 0,
 													a: 0,
 												},
 											})
@@ -525,11 +549,17 @@ describe("Actions", async () => {
 					});
 				});
 
+				// result
+				// total 35
 				return;
 				describe("Updating", () => {
-					describe("updating with filters found");
-					describe("deep update");
-					describe("updating with filters not found");
+					before(async () => {
+						//						db.insertOne({ doc: {} });
+					});
+					describe("updating with filters found", () => {});
+					describe("updating with filters not found", () => {});
+					describe("deep update", () => {});
+					describe("deep update with deep filters", () => {});
 				});
 				describe("Upserting", () => {});
 				describe("Counting", () => {});
