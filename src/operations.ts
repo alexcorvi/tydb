@@ -157,8 +157,8 @@ export class Operations<S> {
 	}: {
 		filter: Filter<FullSchema<S>>;
 		update: UpdateOperators<FullSchema<S>>;
-		upsert: boolean;
-	}): Promise<OperatedOne<FullSchema<S>> & { upsert: boolean }> {
+		upsert?: boolean;
+	}): Promise<OperatedOne<FullSchema<S>> & { upsert?: boolean }> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
 		if (update.$set) {
