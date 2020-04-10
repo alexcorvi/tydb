@@ -130,9 +130,10 @@ export class Operations<S> {
 				update,
 				{
 					multi: true,
+					upsert: false,
 					returnUpdatedDocs: true,
 				},
-				(err, n, affected, upsert) => {
+				(err, n, affected) => {
 					if (err) return reject(err);
 					resolve({
 						n,
@@ -153,12 +154,10 @@ export class Operations<S> {
 	public async updateOne({
 		filter,
 		update,
-		upsert = false,
 	}: {
 		filter: Filter<FullSchema<S>>;
 		update: UpdateOperators<FullSchema<S>>;
-		upsert?: boolean;
-	}): Promise<OperatedOne<FullSchema<S>> & { upsert?: boolean }> {
+	}): Promise<OperatedOne<FullSchema<S>>> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
 		if (update.$set) {
@@ -170,19 +169,92 @@ export class Operations<S> {
 				update,
 				{
 					multi: false,
-					upsert,
+					upsert: false,
+					returnUpdatedDocs: true,
+				},
+				(err, n, affected) => {
+					if (err) return reject(err);
+					resolve({
+						n,
+						affected: util.isArray(affected)
+							? affected[0]
+							: affected
+							? affected
+							: null,
+					});
+				}
+			);
+		});
+	}
+
+	/**
+	 * Update many documents that meets the specified criteria
+	 * and create them when they are not found
+	 */
+	public async upsertMany({
+		filter,
+		doc,
+	}: {
+		filter: Filter<FullSchema<S>>;
+		doc: S;
+	}): Promise<OperatedMany<FullSchema<S>> & { upsert: boolean }> {
+		filter = fixDeep(filter || {});
+		return new Promise(async (resolve, reject) => {
+			(await this._connect()).update<FullSchema<S>>(
+				filter,
+				doc,
+				{
+					multi: true,
+					upsert: true,
 					returnUpdatedDocs: true,
 				},
 				(err, n, affected, upsert) => {
 					if (err) return reject(err);
 					resolve({
 						n,
-						upsert,
+						affected: util.isArray(affected)
+							? affected
+							: affected
+							? [affected]
+							: [],
+						upsert: !!upsert,
+					});
+				}
+			);
+		});
+	}
+
+	/**
+	 * Update one document that meets the specified criteria
+	 * and create them when they are not found
+	 */
+	public async upsertOne({
+		filter,
+		doc,
+	}: {
+		filter: Filter<FullSchema<S>>;
+		doc: S;
+	}): Promise<OperatedOne<FullSchema<S>> & { upsert: boolean }> {
+		filter = fixDeep(filter || {});
+		return new Promise(async (resolve, reject) => {
+			(await this._connect()).update<FullSchema<S>>(
+				filter,
+				doc,
+				{
+					multi: false,
+					upsert: true,
+					returnUpdatedDocs: true,
+				},
+				(err, n, affected, upsert) => {
+					if (err) return reject(err);
+					resolve({
+						n,
 						affected: util.isArray(affected)
 							? affected[0]
 							: affected
 							? affected
 							: null,
+						upsert: !!upsert,
 					});
 				}
 			);
