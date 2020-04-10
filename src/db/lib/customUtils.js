@@ -1,22 +1,33 @@
-var crypto = require('crypto')
-  ;
-
-/**
- * Return a random alphanumerical string of length len
- * There is a very small probability (less than 1/1,000,000) for the length to be less than len
- * (il the base64 conversion yields too many pluses and slashes) but
- * that's not an issue here
- * The probability of a collision is extremely small (need 3*10^12 documents to have one chance in a million of a collision)
- * See http://en.wikipedia.org/wiki/Birthday_problem
- */
-function uid (len) {
-  return crypto.randomBytes(Math.ceil(Math.max(8, len * 2)))
-    .toString('base64')
-    .replace(/[+\/]/g, '')
-    .slice(0, len);
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var lut = [];
+for (var i = 0; i < 256; i++) {
+    lut[i] = (i < 16 ? "0" : "") + i.toString(16);
 }
-
-
-// Interface
-module.exports.uid = uid;
-
+function uid() {
+    var d0 = (Math.random() * 0xffffffff) | 0;
+    var d1 = (Math.random() * 0xffffffff) | 0;
+    var d2 = (Math.random() * 0xffffffff) | 0;
+    var d3 = (Math.random() * 0xffffffff) | 0;
+    return (lut[d0 & 0xff] +
+        lut[(d0 >> 8) & 0xff] +
+        lut[(d0 >> 16) & 0xff] +
+        lut[(d0 >> 24) & 0xff] +
+        "-" +
+        lut[d1 & 0xff] +
+        lut[(d1 >> 8) & 0xff] +
+        "-" +
+        lut[((d1 >> 16) & 0x0f) | 0x40] +
+        lut[(d1 >> 24) & 0xff] +
+        "-" +
+        lut[(d2 & 0x3f) | 0x80] +
+        lut[(d2 >> 8) & 0xff] +
+        "-" +
+        lut[(d2 >> 16) & 0xff] +
+        lut[(d2 >> 24) & 0xff] +
+        lut[d3 & 0xff] +
+        lut[(d3 >> 8) & 0xff] +
+        lut[(d3 >> 16) & 0xff] +
+        lut[(d3 >> 24) & 0xff]);
+}
+exports.uid = uid;
