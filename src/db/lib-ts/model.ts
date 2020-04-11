@@ -15,11 +15,6 @@ interface keyedObjectG<G> {
 type PrimitiveValue = number | string | boolean | undefined | null | Date;
 type Value = keyedObject | Array<PrimitiveValue | keyedObject> | PrimitiveValue;
 
-const modifierFunctions: ModifierGroup = {};
-const comparisonFunctions = {};
-const logicalOperators = {};
-const arrayComparisonFunctions = {};
-
 /**
  * Check a key throw an error if the key is non valid
  * @param {String} k key
@@ -75,7 +70,7 @@ function checkObject(obj: Value) {
  */
 function serialize(obj: Value) {
 	var res;
-	res = JSON.stringify(obj, function (k, v) {
+	res = JSON.stringify(obj, function (this: any, k, v) {
 		checkKey(k, v);
 
 		if (v === undefined) {
@@ -86,6 +81,7 @@ function serialize(obj: Value) {
 		}
 		// Hackish way of checking if object is Date.
 		// We can't use value directly because for dates it is already string in this function (date.toJSON was already called), so we use this
+		// TODO: avoid using this way
 		if (typeof this[k].getTime === "function") {
 			return { $$date: this[k].getTime() };
 		}
@@ -123,7 +119,7 @@ function deserialize(rawData: string) {
  * The optional strictKeys flag (defaulting to false) indicates whether to copy everything or only fields
  * where the keys are valid, i.e. don't begin with $ and don't contain a .
  */
-function deepCopy(obj: Value, strictKeys: boolean) {
+function deepCopy<T>(obj: T, strictKeys?: boolean): T {
 	let res: Value = undefined;
 	if (
 		typeof obj === "boolean" ||
@@ -138,20 +134,26 @@ function deepCopy(obj: Value, strictKeys: boolean) {
 	if (util.isArray(obj)) {
 		res = [];
 		obj.forEach((o) => (res as Value[]).push(deepCopy(o, strictKeys)));
-		return res;
+		return res as any;
 	}
 
 	if (typeof obj === "object") {
 		res = {};
 		Object.keys(obj).forEach((k) => {
 			if (!strictKeys || (k[0] !== "$" && k.indexOf(".") === -1)) {
-				(res as keyedObject)[k] = deepCopy(obj[k], strictKeys);
+				(res as keyedObject)[k] = deepCopy(
+					((obj as unknown) as keyedObject)[k],
+					strictKeys
+				);
 			}
 		});
-		return res;
+		return res as any;
 	}
 
-	return undefined; // For now everything else is undefined. We should probably throw an error instead
+	// CHANGED
+	throw new Error(
+		"Attempted to deep copy a value that is neither an array nor an object"
+	);
 }
 
 /**
@@ -363,11 +365,13 @@ const lastStepModifierFunctions: ModifierGroup = {
 				throw new Error("$each requires an array value");
 			}
 
-			eachVal.forEach(function (v) {
-				obj[field].push(v);
-			});
+			eachVal.forEach((v) => obj[field].push(v));
 
-			if (sliceVal === undefined || typeof sliceVal !== "number") {
+			if (sliceVal === undefined) {
+				return;
+			}
+
+			if (sliceVal !== undefined && typeof sliceVal !== "number") {
 				throw new Error("$slice requires a number value");
 			}
 
@@ -546,6 +550,8 @@ function createModifierFunction(modifier: string) {
 	};
 }
 
+const modifierFunctions: ModifierGroup = {};
+
 // Actually create all modifier functions
 Object.keys(lastStepModifierFunctions).forEach(function (modifier) {
 	modifierFunctions[modifier] = createModifierFunction(modifier);
@@ -554,18 +560,15 @@ Object.keys(lastStepModifierFunctions).forEach(function (modifier) {
 /**
  * Modify a DB object according to an update query
  */
-function modify(obj, updateQuery) {
-	var keys = Object.keys(updateQuery),
-		firstChars = _.map(keys, function (item) {
-			return item[0];
-		}),
-		dollarFirstChars = _.filter(firstChars, function (c) {
-			return c === "$";
-		}),
-		newDoc,
-		modifiers;
+function modify(obj: keyedObject, updateQuery: { $set: {} }) {
+	var keys = Object.keys(updateQuery);
+	let firstChars = keys.map((x) => x.charAt(0));
+	let dollarFirstChars = firstChars.filter((x) => x === "$");
 
-	if (keys.indexOf("_id") !== -1 && updateQuery._id !== obj._id) {
+	if (
+		keys.indexOf("_id") !== -1 &&
+		(updateQuery as keyedObject)["_id"] !== obj._id
+	) {
 		throw new Error("You cannot change a document's _id");
 	}
 
@@ -576,32 +579,37 @@ function modify(obj, updateQuery) {
 		throw new Error("You cannot mix modifiers and normal fields");
 	}
 
+	let newDoc: keyedObject = {};
+
 	if (dollarFirstChars.length === 0) {
 		// Simply replace the object with the update query contents
 		newDoc = deepCopy(updateQuery);
 		newDoc._id = obj._id;
+		// TODO: what about createdAt & updatedAt?
 	} else {
 		// Apply modifiers
-		modifiers = _.uniq(keys);
+		let modifiers = Array.from(new Set(keys));
 		newDoc = deepCopy(obj);
-		modifiers.forEach(function (m) {
-			var keys;
+		modifiers.forEach(function (modifier) {
+			let modArgument = (updateQuery as keyedObjectG<keyedObject>)[
+				modifier
+			];
 
-			if (!modifierFunctions[m]) {
-				throw new Error("Unknown modifier " + m);
+			if (!modifierFunctions[modifier]) {
+				throw new Error("Unknown modifier " + modifier);
 			}
 
 			// Can't rely on Object.keys throwing on non objects since ES6
 			// Not 100% satisfying as non objects can be interpreted as objects but no false negatives so we can live with it
-			if (typeof updateQuery[m] !== "object") {
+			if (typeof modArgument !== "object") {
 				throw new Error(
-					"Modifier " + m + "'s argument must be an object"
+					"Modifier " + modifier + "'s argument must be an object"
 				);
 			}
 
-			keys = Object.keys(updateQuery[m]);
+			let keys = Object.keys(modArgument);
 			keys.forEach(function (k) {
-				modifierFunctions[m](newDoc, k, updateQuery[m][k]);
+				modifierFunctions[modifier](newDoc, k, modArgument[k]);
 			});
 		});
 	}
@@ -624,10 +632,8 @@ function modify(obj, updateQuery) {
  * @param {Object} obj
  * @param {String} field
  */
-function getDotValue(obj, field) {
-	var fieldParts = typeof field === "string" ? field.split(".") : field,
-		i,
-		objs;
+function getDotValue(obj: any, field: string): Value {
+	const fieldParts = typeof field === "string" ? field.split(".") : field;
 
 	if (!obj) {
 		return undefined;
@@ -643,19 +649,25 @@ function getDotValue(obj, field) {
 
 	if (util.isArray(obj[fieldParts[0]])) {
 		// If the next field is an integer, return only this item of the array
-		i = parseInt(fieldParts[1], 10);
+		let i = parseInt(fieldParts[1], 10);
 		if (typeof i === "number" && !isNaN(i)) {
-			return getDotValue(obj[fieldParts[0]][i], fieldParts.slice(2));
+			return getDotValue(
+				obj[fieldParts[0]][i],
+				fieldParts.slice(2) as any
+			);
 		}
 
 		// Return the array of values
-		objs = new Array();
-		for (i = 0; i < obj[fieldParts[0]].length; i += 1) {
-			objs.push(getDotValue(obj[fieldParts[0]][i], fieldParts.slice(1)));
+		let objects = new Array();
+		for (let i = 0; i < obj[fieldParts[0]].length; i += 1) {
+			objects.push(
+				getDotValue(obj[fieldParts[0]][i], fieldParts.slice(1) as any)
+			);
 		}
-		return objs;
+		return objects;
 	} else {
-		return getDotValue(obj[fieldParts[0]], fieldParts.slice(1));
+		return getDotValue(obj[fieldParts[0]], fieldParts.slice(1) as any);
+		// CHANGED: added .join(".") and not only on this function, but on another one above
 	}
 }
 
@@ -665,7 +677,7 @@ function getDotValue(obj, field) {
  * In the case of object, we check deep equality
  * Returns true if they are, false otherwise
  */
-function areThingsEqual(a, b) {
+function areThingsEqual<T>(a: T, b: T): boolean {
 	var aKeys, bKeys, i;
 
 	// Strings, booleans, numbers, null
@@ -714,7 +726,12 @@ function areThingsEqual(a, b) {
 		if (bKeys.indexOf(aKeys[i]) === -1) {
 			return false;
 		}
-		if (!areThingsEqual(a[aKeys[i]], b[aKeys[i]])) {
+		if (
+			!areThingsEqual(
+				((a as unknown) as keyedObject)[aKeys[i]],
+				((b as unknown) as keyedObject)[aKeys[i]]
+			)
+		) {
 			return false;
 		}
 	}
@@ -724,7 +741,7 @@ function areThingsEqual(a, b) {
 /**
  * Check that two values are comparable
  */
-function areComparable(a, b) {
+function areComparable<T, D>(a: T, b: D): boolean {
 	if (
 		typeof a !== "string" &&
 		typeof a !== "number" &&
@@ -742,6 +759,12 @@ function areComparable(a, b) {
 
 	return true;
 }
+
+interface ComparisonGroup {
+	[key: string]: <A, B>(a: A, b: B | A) => boolean;
+}
+
+const comparisonFunctions: ComparisonGroup = {};
 
 /**
  * Arithmetic and comparison operators
@@ -812,17 +835,17 @@ comparisonFunctions.$regex = function (a, b) {
 };
 
 comparisonFunctions.$exists = function (value, exists) {
-	if (exists || exists === "") {
+	if (exists || (exists as any) === "") {
 		// This will be true for all values of exists except false, null, undefined and 0
-		exists = true; // That's strange behaviour (we should only use true/false) but that's the way Mongo does it...
+		(exists as any) = true; // That's strange behaviour (we should only use true/false) but that's the way Mongo does it...
 	} else {
-		exists = false;
+		(exists as any) = false;
 	}
 
 	if (value === undefined) {
-		return !exists;
+		return (!exists as unknown) as boolean;
 	} else {
-		return exists;
+		return (exists as unknown) as boolean;
 	}
 };
 
@@ -831,12 +854,15 @@ comparisonFunctions.$size = function (obj, value) {
 	if (!util.isArray(obj)) {
 		return false;
 	}
-	if (value % 1 !== 0) {
+	if (((value as unknown) as number) % 1 !== 0) {
 		throw new Error("$size operator called without an integer");
 	}
 
-	return obj.length == value;
+	return (
+		((obj as unknown) as any[]).length === ((value as unknown) as number)
+	);
 };
+
 comparisonFunctions.$elemMatch = function (obj, value) {
 	if (!util.isArray(obj)) {
 		return false;
@@ -852,8 +878,13 @@ comparisonFunctions.$elemMatch = function (obj, value) {
 	}
 	return result;
 };
+
+const arrayComparisonFunctions: { [key: string]: boolean } = {};
+
 arrayComparisonFunctions.$size = true;
 arrayComparisonFunctions.$elemMatch = true;
+
+const logicalOperators: keyedObjectG<(obj: any, query: any[]) => boolean> = {};
 
 /**
  * Match any of the subqueries
@@ -878,8 +909,6 @@ logicalOperators.$or = function (obj, query) {
 
 /**
  * Match all of the subqueries
- * @param {Model} obj
- * @param {Array of Queries} query
  */
 logicalOperators.$and = function (obj, query) {
 	var i;
@@ -899,8 +928,6 @@ logicalOperators.$and = function (obj, query) {
 
 /**
  * Inverted match of the query
- * @param {Model} obj
- * @param {Query} query
  */
 logicalOperators.$not = function (obj, query) {
 	return !match(obj, query);
@@ -908,18 +935,16 @@ logicalOperators.$not = function (obj, query) {
 
 /**
  * Use a function to match
- * @param {Model} obj
- * @param {Query} query
  */
 logicalOperators.$where = function (obj, fn) {
 	var result;
 
-	if (!_.isFunction(fn)) {
+	if (typeof fn !== "function") {
 		throw new Error("$where operator used without a function");
 	}
 
-	result = fn.call(obj);
-	if (!_.isBoolean(result)) {
+	result = (fn as any).call(obj);
+	if (typeof result !== "boolean") {
 		throw new Error("$where function must return boolean");
 	}
 
@@ -928,30 +953,27 @@ logicalOperators.$where = function (obj, fn) {
 
 /**
  * Tell if a given document matches a query
- * @param {Object} obj Document to check
- * @param {Object} query
  */
-function match(obj, query) {
-	var queryKeys, queryKey, queryValue, i;
-
+function match(obj: any, query: any): boolean {
 	// Primitive query against a primitive type
 	// This is a bit of a hack since we construct an object with an arbitrary key only to dereference it later
 	// But I don't have time for a cleaner implementation now
+	// TODO: do a cleaner implementation
 	if (isPrimitiveType(obj) || isPrimitiveType(query)) {
 		return matchQueryPart({ needAKey: obj }, "needAKey", query);
 	}
 
 	// Normal query
-	queryKeys = Object.keys(query);
-	for (i = 0; i < queryKeys.length; i += 1) {
-		queryKey = queryKeys[i];
-		queryValue = query[queryKey];
+	let queryKeys = Object.keys(query);
+	for (let i = 0; i < queryKeys.length; i += 1) {
+		let queryKey = queryKeys[i];
+		let queryValue = query[queryKey];
 
 		if (queryKey[0] === "$") {
 			if (!logicalOperators[queryKey]) {
 				throw new Error("Unknown logical operator " + queryKey);
 			}
-			if (!logicalOperators[queryKey](obj, queryValue)) {
+			if (!logicalOperators[queryKey](obj, queryValue as any)) {
 				return false;
 			}
 		} else {
@@ -968,12 +990,13 @@ function match(obj, query) {
  * Match an object against a specific { key: value } part of a query
  * if the treatObjAsValue flag is set, don't try to match every part separately, but the array as a whole
  */
-function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
-	var objValue = getDotValue(obj, queryKey),
-		i,
-		keys,
-		firstChars,
-		dollarFirstChars;
+function matchQueryPart(
+	obj: any,
+	queryKey: string,
+	queryValue: any,
+	treatObjAsValue?: boolean
+): boolean {
+	const objValue = getDotValue(obj, queryKey);
 
 	// Check if the value is an array if we don't force a treatment as value
 	if (util.isArray(objValue) && !treatObjAsValue) {
@@ -988,8 +1011,8 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
 			typeof queryValue === "object" &&
 			!util.isRegExp(queryValue)
 		) {
-			keys = Object.keys(queryValue);
-			for (i = 0; i < keys.length; i += 1) {
+			let keys = Object.keys(queryValue);
+			for (let i = 0; i < keys.length; i += 1) {
 				if (arrayComparisonFunctions[keys[i]]) {
 					return matchQueryPart(obj, queryKey, queryValue, true);
 				}
@@ -997,7 +1020,7 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
 		}
 
 		// If not, treat it as an array of { obj, query } where there needs to be at least one match
-		for (i = 0; i < objValue.length; i += 1) {
+		for (let i = 0; i < objValue.length; i += 1) {
 			if (matchQueryPart({ k: objValue[i] }, "k", queryValue)) {
 				return true;
 			} // k here could be any string
@@ -1013,13 +1036,9 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
 		!util.isRegExp(queryValue) &&
 		!util.isArray(queryValue)
 	) {
-		keys = Object.keys(queryValue);
-		firstChars = _.map(keys, function (item) {
-			return item[0];
-		});
-		dollarFirstChars = _.filter(firstChars, function (c) {
-			return c === "$";
-		});
+		let keys = Object.keys(queryValue);
+		let firstChars = keys.map((item) => item[0]);
+		let dollarFirstChars = firstChars.filter((c) => c === "$");
 
 		if (
 			dollarFirstChars.length !== 0 &&
@@ -1030,7 +1049,7 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
 
 		// queryValue is an object of this form: { $comparisonOperator1: value1, ... }
 		if (dollarFirstChars.length > 0) {
-			for (i = 0; i < keys.length; i += 1) {
+			for (let i = 0; i < keys.length; i += 1) {
 				if (!comparisonFunctions[keys[i]]) {
 					throw new Error("Unknown comparison function " + keys[i]);
 				}
@@ -1059,14 +1078,15 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
 	return true;
 }
 
-// Interface
-module.exports.serialize = serialize;
-module.exports.deserialize = deserialize;
-module.exports.deepCopy = deepCopy;
-module.exports.checkObject = checkObject;
-module.exports.isPrimitiveType = isPrimitiveType;
-module.exports.modify = modify;
-module.exports.getDotValue = getDotValue;
-module.exports.match = match;
-module.exports.areThingsEqual = areThingsEqual;
-module.exports.compareThings = compareThings;
+export {
+	serialize,
+	deserialize,
+	deepCopy,
+	checkObject,
+	isPrimitiveType,
+	modify,
+	getDotValue,
+	match,
+	areThingsEqual,
+	compareThings,
+};

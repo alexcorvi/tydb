@@ -1,8 +1,17 @@
 "use strict";
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const model = __importStar(require("./model"));
 /**
  * Manage access to data, be it to find, update or remove it
  */
-var model = require('./model'), _ = require('underscore');
+var _ = require("underscore");
 /**
  * Create a new cursor for this collection
  * @param {Datastore} db - The datastore this cursor is bound to
@@ -52,11 +61,12 @@ Cursor.prototype.projection = function (projection) {
  */
 Cursor.prototype.project = function (candidates) {
     var res = [], self = this, keepId, action, keys;
-    if (this._projection === undefined || Object.keys(this._projection).length === 0) {
+    if (this._projection === undefined ||
+        Object.keys(this._projection).length === 0) {
         return candidates;
     }
     keepId = this._projection._id === 0 ? false : true;
-    this._projection = _.omit(this._projection, '_id');
+    this._projection = _.omit(this._projection, "_id");
     // Check for consistency
     keys = Object.keys(this._projection);
     keys.forEach(function (k) {
@@ -68,7 +78,8 @@ Cursor.prototype.project = function (candidates) {
     // Do the actual projection
     candidates.forEach(function (candidate) {
         var toPush;
-        if (action === 1) { // pick-type projection
+        if (action === 1) {
+            // pick-type projection
             toPush = { $set: {} };
             keys.forEach(function (k) {
                 toPush.$set[k] = model.getDotValue(candidate, k);
@@ -78,9 +89,12 @@ Cursor.prototype.project = function (candidates) {
             });
             toPush = model.modify({}, toPush);
         }
-        else { // omit-type projection
+        else {
+            // omit-type projection
             toPush = { $unset: {} };
-            keys.forEach(function (k) { toPush.$unset[k] = true; });
+            keys.forEach(function (k) {
+                toPush.$unset[k] = true;
+            });
             toPush = model.modify(candidate, toPush);
         }
         if (keepId) {
@@ -152,7 +166,9 @@ Cursor.prototype._exec = function (_callback) {
                 var criterion, compare, i;
                 for (i = 0; i < criteria.length; i++) {
                     criterion = criteria[i];
-                    compare = criterion.direction * model.compareThings(model.getDotValue(a, criterion.key), model.getDotValue(b, criterion.key), self.db.compareStrings);
+                    compare =
+                        criterion.direction *
+                            model.compareThings(model.getDotValue(a, criterion.key), model.getDotValue(b, criterion.key), self.db.compareStrings);
                     if (compare !== 0) {
                         return compare;
                     }
