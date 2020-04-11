@@ -667,7 +667,6 @@ function getDotValue(obj: any, field: string): Value {
 		return objects;
 	} else {
 		return getDotValue(obj[fieldParts[0]], fieldParts.slice(1) as any);
-		// CHANGED: added .join(".") and not only on this function, but on another one above
 	}
 }
 
