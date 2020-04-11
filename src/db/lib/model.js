@@ -1,13 +1,19 @@
 "use strict";
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const util = __importStar(require("util"));
+const modifierFunctions = {};
+const comparisonFunctions = {};
+const logicalOperators = {};
+const arrayComparisonFunctions = {};
 /**
- * Handle models (i.e. docs)
- * Serialization/deserialization
- * Copying
- * Querying, update
- */
-var util = require("util"), _ = require("underscore"), modifierFunctions = {}, lastStepModifierFunctions = {}, comparisonFunctions = {}, logicalOperators = {}, arrayComparisonFunctions = {};
-/**
- * Check a key, throw an error if the key is non valid
+ * Check a key throw an error if the key is non valid
  * @param {String} k key
  * @param {Model} v value, needed to treat the Date edge case
  * Non-treatable edge cases here: if part of the object if of the form { $$date: number } or { $$deleted: true }
@@ -35,11 +41,11 @@ function checkKey(k, v) {
  */
 function checkObject(obj) {
     if (util.isArray(obj)) {
-        obj.forEach(function (o) {
-            checkObject(o);
-        });
+        obj.forEach((o) => checkObject(o));
     }
-    if (typeof obj === "object" && obj !== null) {
+    else if (typeof obj === "object" &&
+        obj !== null &&
+        !(obj instanceof Date)) {
         Object.keys(obj).forEach(function (k) {
             checkKey(k, obj[k]);
             checkObject(obj[k]);
@@ -64,7 +70,7 @@ function serialize(obj) {
         if (v === null) {
             return null;
         }
-        // Hackish way of checking if object is Date (this way it works between execution contexts in node-webkit).
+        // Hackish way of checking if object is Date.
         // We can't use value directly because for dates it is already string in this function (date.toJSON was already called), so we use this
         if (typeof this[k].getTime === "function") {
             return { $$date: this[k].getTime() };
@@ -100,7 +106,7 @@ function deserialize(rawData) {
  * where the keys are valid, i.e. don't begin with $ and don't contain a .
  */
 function deepCopy(obj, strictKeys) {
-    var res;
+    let res = undefined;
     if (typeof obj === "boolean" ||
         typeof obj === "number" ||
         typeof obj === "string" ||
@@ -110,14 +116,12 @@ function deepCopy(obj, strictKeys) {
     }
     if (util.isArray(obj)) {
         res = [];
-        obj.forEach(function (o) {
-            res.push(deepCopy(o, strictKeys));
-        });
+        obj.forEach((o) => res.push(deepCopy(o, strictKeys)));
         return res;
     }
     if (typeof obj === "object") {
         res = {};
-        Object.keys(obj).forEach(function (k) {
+        Object.keys(obj).forEach((k) => {
             if (!strictKeys || (k[0] !== "$" && k.indexOf(".") === -1)) {
                 res[k] = deepCopy(obj[k], strictKeys);
             }
@@ -138,11 +142,6 @@ function isPrimitiveType(obj) {
         util.isDate(obj) ||
         util.isArray(obj));
 }
-/**
- * Utility functions for comparing things
- * Assumes type checking was already done (a and b already have the same type)
- * compareNSB works for numbers, strings and booleans
- */
 function compareNSB(a, b) {
     if (a < b) {
         return -1;
@@ -153,9 +152,8 @@ function compareNSB(a, b) {
     return 0;
 }
 function compareArrays(a, b) {
-    var i, comp;
-    for (i = 0; i < Math.min(a.length, b.length); i += 1) {
-        comp = compareThings(a[i], b[i]);
+    for (let i = 0; i < Math.min(a.length, b.length); i += 1) {
+        let comp = compareThings(a[i], b[i]);
         if (comp !== 0) {
             return comp;
         }
@@ -168,13 +166,13 @@ function compareArrays(a, b) {
  * Things are defined as any native types (string, number, boolean, null, date) and objects
  * We need to compare with undefined as it will be used in indexes
  * In the case of objects and arrays, we deep-compare
- * If two objects dont have the same type, the (arbitrary) type hierarchy is: undefined, null, number, strings, boolean, dates, arrays, objects
+ * If two objects don't have the same type, the (arbitrary) type hierarchy is: undefined, null, number, strings, boolean, dates, arrays, objects
  * Return -1 if a < b, 1 if a > b and 0 if a = b (note that equality here is NOT the same as defined in areThingsEqual!)
  *
  * @param {Function} _compareStrings String comparing function, returning -1, 0 or 1, overriding default string comparison (useful for languages with accented letters)
  */
 function compareThings(a, b, _compareStrings) {
-    var aKeys, bKeys, comp, i, compareStrings = _compareStrings || compareNSB;
+    const compareStrings = _compareStrings || compareNSB;
     // undefined
     if (a === undefined) {
         return b === undefined ? 0 : -1;
@@ -225,10 +223,10 @@ function compareThings(a, b, _compareStrings) {
         return util.isArray(a) ? compareArrays(a, b) : 1;
     }
     // Objects
-    aKeys = Object.keys(a).sort();
-    bKeys = Object.keys(b).sort();
-    for (i = 0; i < Math.min(aKeys.length, bKeys.length); i += 1) {
-        comp = compareThings(a[aKeys[i]], b[bKeys[i]]);
+    let aKeys = Object.keys(a).sort();
+    let bKeys = Object.keys(b).sort();
+    for (let i = 0; i < Math.min(aKeys.length, bKeys.length); i += 1) {
+        let comp = compareThings(a[aKeys[i]], b[bKeys[i]]);
         if (comp !== 0) {
             return comp;
         }
@@ -246,80 +244,84 @@ function compareThings(a, b, _compareStrings) {
  * @param {String} field Can contain dots, in that case that means we will set a subfield recursively
  * @param {Model} value
  */
-/**
- * Set a field to a new value
- */
-lastStepModifierFunctions.$set = function (obj, field, value) {
-    if (!obj) {
-        return;
-    }
-    obj[field] = value;
-};
-/**
- * Set a field to a new value
- */
-lastStepModifierFunctions.$mul = function (obj, field, value) {
-    obj[field] = obj[field] * value;
-};
-/**
- * Unset a field
- */
-lastStepModifierFunctions.$unset = function (obj, field, value) {
-    delete obj[field];
-};
-/**
- * Push an element to the end of an array field
- * Optional modifier $each instead of value to push several values
- * Optional modifier $slice to slice the resulting array, see https://docs.mongodb.org/manual/reference/operator/update/slice/
- * Différeence with MongoDB: if $slice is specified and not $each, we act as if value is an empty array
- */
-lastStepModifierFunctions.$push = function (obj, field, value) {
-    // Create the array if it doesn't exist
-    if (!obj.hasOwnProperty(field)) {
-        obj[field] = [];
-    }
-    if (!util.isArray(obj[field])) {
-        throw new Error("Can't $push an element on non-array values");
-    }
-    if (value !== null &&
-        typeof value === "object" &&
-        value.$slice &&
-        value.$each === undefined) {
-        value.$each = [];
-    }
-    if (value !== null && typeof value === "object" && value.$each) {
-        if (Object.keys(value).length >= 3 ||
-            (Object.keys(value).length === 2 && value.$slice === undefined)) {
-            throw new Error("Can only use $slice in cunjunction with $each when $push to array");
-        }
-        if (!util.isArray(value.$each)) {
-            throw new Error("$each requires an array value");
-        }
-        value.$each.forEach(function (v) {
-            obj[field].push(v);
-        });
-        if (value.$slice === undefined || typeof value.$slice !== "number") {
+const lastStepModifierFunctions = {
+    $set: function (obj, field, value) {
+        if (!obj) {
             return;
         }
-        if (value.$slice === 0) {
+        obj[field] = value;
+    },
+    $mul: function (obj, field, value) {
+        let base = obj[field];
+        if (typeof value !== "number" || typeof base !== "number") {
+            throw new Error("Multiply operator works only on numbers");
+        }
+        obj[field] = base * value;
+    },
+    $unset: function (obj, field) {
+        delete obj[field];
+    },
+    /**
+     * Push an element to the end of an array field
+     * Optional modifier $each instead of value to push several values
+     * Optional modifier $slice to slice the resulting array, see https://docs.mongodb.org/manual/reference/operator/update/slice/
+     * Différeence with MongoDB: if $slice is specified and not $each, we act as if value is an empty array
+     */
+    $push: function (obj, field, value) {
+        // Create the array if it doesn't exist
+        if (!obj.hasOwnProperty(field)) {
             obj[field] = [];
         }
-        else {
-            var start, end, n = obj[field].length;
-            if (value.$slice < 0) {
-                start = Math.max(0, n + value.$slice);
-                end = n;
-            }
-            else if (value.$slice > 0) {
-                start = 0;
-                end = Math.min(n, value.$slice);
-            }
-            obj[field] = obj[field].slice(start, end);
+        if (!util.isArray(obj[field])) {
+            throw new Error("Can't $push an element on non-array values");
         }
-    }
-    else {
-        obj[field].push(value);
-    }
+        if (value !== null &&
+            typeof value === "object" &&
+            value["$slice"] &&
+            value["$each"] === undefined) {
+            value.$each = [];
+        }
+        if (value !== null &&
+            typeof value === "object" &&
+            value["$each"]) {
+            if (Object.keys(value).length >= 3 ||
+                (Object.keys(value).length === 2 && value.["$slice"] === undefined)) {
+                throw new Error("Can only use $slice in conjunction with $each when $push to array");
+            }
+            const eachVal = value["$each"];
+            const sliceVal = value["$slice"];
+            if (!util.isArray(eachVal)) {
+                throw new Error("$each requires an array value");
+            }
+            eachVal.forEach(function (v) {
+                obj[field].push(v);
+            });
+            if (sliceVal === undefined ||
+                typeof sliceVal !== "number") {
+                throw new Error("$slice requires a number value");
+            }
+            if (sliceVal === 0) {
+                obj[field] = [];
+            }
+            else {
+                let start = 0;
+                let end = 0;
+                let n = obj[field].length;
+                if (sliceVal < 0) {
+                    start = Math.max(0, n + sliceVal);
+                    end = n;
+                }
+                else if (sliceVal > 0) {
+                    start = 0;
+                    end = Math.min(n, sliceVal);
+                }
+                obj[field] = obj[field].slice(start, end);
+            }
+        }
+        else {
+            obj[field].push(value);
+        }
+    },
 };
 /**
  * Add an element to an array field only if it is not already in it

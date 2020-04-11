@@ -1,30 +1,37 @@
-/**
- * Handle models (i.e. docs)
- * Serialization/deserialization
- * Copying
- * Querying, update
- */
+import * as util from "util";
 
-var util = require("util"),
-	_ = require("underscore"),
-	modifierFunctions = {},
-	lastStepModifierFunctions = {},
-	comparisonFunctions = {},
-	logicalOperators = {},
-	arrayComparisonFunctions = {};
+interface ModifierGroup {
+	[key: string]: (obj: keyedObjectG<any>, field: string, value: any) => void;
+}
+
+interface keyedObject {
+	[key: string]: Value;
+}
+
+interface keyedObjectG<G> {
+	[key: string]: G;
+}
+
+type PrimitiveValue = number | string | boolean | undefined | null | Date;
+type Value = keyedObject | Array<PrimitiveValue | keyedObject> | PrimitiveValue;
+
+const modifierFunctions: ModifierGroup = {};
+const comparisonFunctions = {};
+const logicalOperators = {};
+const arrayComparisonFunctions = {};
+
 /**
- * Check a key, throw an error if the key is non valid
+ * Check a key throw an error if the key is non valid
  * @param {String} k key
  * @param {Model} v value, needed to treat the Date edge case
  * Non-treatable edge cases here: if part of the object if of the form { $$date: number } or { $$deleted: true }
  * Its serialized-then-deserialized version it will transformed into a Date object
  * But you really need to want it to trigger such behaviour, even when warned not to use '$' at the beginning of the field names...
  */
-function checkKey(k, v) {
+function checkKey(k: string | number, v: Value) {
 	if (typeof k === "number") {
 		k = k.toString();
 	}
-
 	if (
 		k[0] === "$" &&
 		!(k === "$$date" && typeof v === "number") &&
@@ -34,7 +41,6 @@ function checkKey(k, v) {
 	) {
 		throw new Error("Field names cannot begin with the $ character");
 	}
-
 	if (k.indexOf(".") !== -1) {
 		throw new Error("Field names cannot contain a .");
 	}
@@ -44,14 +50,14 @@ function checkKey(k, v) {
  * Check a DB object and throw an error if it's not valid
  * Works by applying the above checkKey function to all fields recursively
  */
-function checkObject(obj) {
+function checkObject(obj: Value) {
 	if (util.isArray(obj)) {
-		obj.forEach(function (o) {
-			checkObject(o);
-		});
-	}
-
-	if (typeof obj === "object" && obj !== null) {
+		obj.forEach((o) => checkObject(o));
+	} else if (
+		typeof obj === "object" &&
+		obj !== null &&
+		!(obj instanceof Date)
+	) {
 		Object.keys(obj).forEach(function (k) {
 			checkKey(k, obj[k]);
 			checkObject(obj[k]);
@@ -67,9 +73,8 @@ function checkObject(obj) {
  * Accepted primitive types: Number, String, Boolean, Date, null
  * Accepted secondary types: Objects, Arrays
  */
-function serialize(obj) {
+function serialize(obj: Value) {
 	var res;
-
 	res = JSON.stringify(obj, function (k, v) {
 		checkKey(k, v);
 
@@ -79,16 +84,13 @@ function serialize(obj) {
 		if (v === null) {
 			return null;
 		}
-
-		// Hackish way of checking if object is Date (this way it works between execution contexts in node-webkit).
+		// Hackish way of checking if object is Date.
 		// We can't use value directly because for dates it is already string in this function (date.toJSON was already called), so we use this
 		if (typeof this[k].getTime === "function") {
 			return { $$date: this[k].getTime() };
 		}
-
 		return v;
 	});
-
 	return res;
 }
 
@@ -96,7 +98,7 @@ function serialize(obj) {
  * From a one-line representation of an object generate by the serialize function
  * Return the object itself
  */
-function deserialize(rawData) {
+function deserialize(rawData: string) {
 	return JSON.parse(rawData, function (k, v) {
 		if (k === "$$date") {
 			return new Date(v);
@@ -112,7 +114,6 @@ function deserialize(rawData) {
 		if (v && v.$$date) {
 			return v.$$date;
 		}
-
 		return v;
 	});
 }
@@ -122,9 +123,8 @@ function deserialize(rawData) {
  * The optional strictKeys flag (defaulting to false) indicates whether to copy everything or only fields
  * where the keys are valid, i.e. don't begin with $ and don't contain a .
  */
-function deepCopy(obj, strictKeys) {
-	var res;
-
+function deepCopy(obj: Value, strictKeys: boolean) {
+	let res: Value = undefined;
 	if (
 		typeof obj === "boolean" ||
 		typeof obj === "number" ||
@@ -137,17 +137,15 @@ function deepCopy(obj, strictKeys) {
 
 	if (util.isArray(obj)) {
 		res = [];
-		obj.forEach(function (o) {
-			res.push(deepCopy(o, strictKeys));
-		});
+		obj.forEach((o) => (res as Value[]).push(deepCopy(o, strictKeys)));
 		return res;
 	}
 
 	if (typeof obj === "object") {
 		res = {};
-		Object.keys(obj).forEach(function (k) {
+		Object.keys(obj).forEach((k) => {
 			if (!strictKeys || (k[0] !== "$" && k.indexOf(".") === -1)) {
-				res[k] = deepCopy(obj[k], strictKeys);
+				(res as keyedObject)[k] = deepCopy(obj[k], strictKeys);
 			}
 		});
 		return res;
@@ -160,7 +158,7 @@ function deepCopy(obj, strictKeys) {
  * Tells if an object is a primitive type or a "real" object
  * Arrays are considered primitive
  */
-function isPrimitiveType(obj) {
+function isPrimitiveType(obj: Value) {
 	return (
 		typeof obj === "boolean" ||
 		typeof obj === "number" ||
@@ -176,7 +174,8 @@ function isPrimitiveType(obj) {
  * Assumes type checking was already done (a and b already have the same type)
  * compareNSB works for numbers, strings and booleans
  */
-function compareNSB(a, b) {
+type NSB = number | string | boolean;
+function compareNSB<T extends NSB>(a: T, b: T) {
 	if (a < b) {
 		return -1;
 	}
@@ -186,12 +185,9 @@ function compareNSB(a, b) {
 	return 0;
 }
 
-function compareArrays(a, b) {
-	var i, comp;
-
-	for (i = 0; i < Math.min(a.length, b.length); i += 1) {
-		comp = compareThings(a[i], b[i]);
-
+function compareArrays(a: Value[], b: Value[]): 0 | 1 | -1 {
+	for (let i = 0; i < Math.min(a.length, b.length); i += 1) {
+		let comp = compareThings(a[i], b[i]);
 		if (comp !== 0) {
 			return comp;
 		}
@@ -206,17 +202,17 @@ function compareArrays(a, b) {
  * Things are defined as any native types (string, number, boolean, null, date) and objects
  * We need to compare with undefined as it will be used in indexes
  * In the case of objects and arrays, we deep-compare
- * If two objects dont have the same type, the (arbitrary) type hierarchy is: undefined, null, number, strings, boolean, dates, arrays, objects
+ * If two objects don't have the same type, the (arbitrary) type hierarchy is: undefined, null, number, strings, boolean, dates, arrays, objects
  * Return -1 if a < b, 1 if a > b and 0 if a = b (note that equality here is NOT the same as defined in areThingsEqual!)
  *
  * @param {Function} _compareStrings String comparing function, returning -1, 0 or 1, overriding default string comparison (useful for languages with accented letters)
  */
-function compareThings(a, b, _compareStrings) {
-	var aKeys,
-		bKeys,
-		comp,
-		i,
-		compareStrings = _compareStrings || compareNSB;
+function compareThings(
+	a: Value,
+	b: Value,
+	_compareStrings?: typeof compareNSB
+): 0 | 1 | -1 {
+	const compareStrings = _compareStrings || compareNSB;
 
 	// undefined
 	if (a === undefined) {
@@ -275,11 +271,11 @@ function compareThings(a, b, _compareStrings) {
 	}
 
 	// Objects
-	aKeys = Object.keys(a).sort();
-	bKeys = Object.keys(b).sort();
+	let aKeys = Object.keys(a).sort();
+	let bKeys = Object.keys(b).sort();
 
-	for (i = 0; i < Math.min(aKeys.length, bKeys.length); i += 1) {
-		comp = compareThings(a[aKeys[i]], b[bKeys[i]]);
+	for (let i = 0; i < Math.min(aKeys.length, bKeys.length); i += 1) {
+		let comp = compareThings(a[aKeys[i]], b[bKeys[i]]);
 
 		if (comp !== 0) {
 			return comp;
@@ -302,221 +298,234 @@ function compareThings(a, b, _compareStrings) {
  * @param {Model} value
  */
 
-/**
- * Set a field to a new value
- */
-lastStepModifierFunctions.$set = function (obj, field, value) {
-	if (!obj) {
-		return;
-	}
-	obj[field] = value;
-};
+const lastStepModifierFunctions: ModifierGroup = {
+	$set: function (obj: keyedObject, field: string, value: Value) {
+		if (!obj) {
+			return;
+		}
+		obj[field] = value;
+	},
 
-/**
- * Set a field to a new value
- */
-lastStepModifierFunctions.$mul = function (obj, field, value) {
-	obj[field] = obj[field] * value;
-};
+	$mul: function (obj: keyedObjectG<number>, field: string, value: Value) {
+		let base = obj[field];
+		if (typeof value !== "number" || typeof base !== "number") {
+			throw new Error("Multiply operator works only on numbers");
+		}
+		obj[field] = base * value;
+	},
 
-/**
- * Unset a field
- */
-lastStepModifierFunctions.$unset = function (obj, field, value) {
-	delete obj[field];
-};
+	$unset: function (obj: keyedObject, field: string) {
+		delete obj[field];
+	},
 
-/**
- * Push an element to the end of an array field
- * Optional modifier $each instead of value to push several values
- * Optional modifier $slice to slice the resulting array, see https://docs.mongodb.org/manual/reference/operator/update/slice/
- * Différeence with MongoDB: if $slice is specified and not $each, we act as if value is an empty array
- */
-lastStepModifierFunctions.$push = function (obj, field, value) {
-	// Create the array if it doesn't exist
-	if (!obj.hasOwnProperty(field)) {
-		obj[field] = [];
-	}
+	/**
+	 * Push an element to the end of an array field
+	 * Optional modifier $each instead of value to push several values
+	 * Optional modifier $slice to slice the resulting array, see https://docs.mongodb.org/manual/reference/operator/update/slice/
+	 * Differences with MongoDB: if $slice is specified and not $each, we act as if value is an empty array
+	 */
+	$push: function (obj: keyedObjectG<Value[]>, field: string, value: Value) {
+		// Create the array if it doesn't exist
+		if (!obj.hasOwnProperty(field)) {
+			obj[field] = [];
+		}
 
-	if (!util.isArray(obj[field])) {
-		throw new Error("Can't $push an element on non-array values");
-	}
+		if (!util.isArray(obj[field])) {
+			throw new Error("Can't $push an element on non-array values");
+		}
 
-	if (
-		value !== null &&
-		typeof value === "object" &&
-		value.$slice &&
-		value.$each === undefined
-	) {
-		value.$each = [];
-	}
-
-	if (value !== null && typeof value === "object" && value.$each) {
 		if (
-			Object.keys(value).length >= 3 ||
-			(Object.keys(value).length === 2 && value.$slice === undefined)
+			value !== null &&
+			typeof value === "object" &&
+			((value as unknown) as keyedObject)["$slice"] &&
+			((value as unknown) as keyedObject)["$each"] === undefined
 		) {
+			((value as unknown) as keyedObject).$each = [];
+		}
+
+		if (
+			value !== null &&
+			typeof value === "object" &&
+			((value as unknown) as keyedObject)["$each"]
+		) {
+			const eachVal = ((value as unknown) as keyedObject)["$each"];
+			const sliceVal = ((value as unknown) as keyedObject)["$slice"];
+			if (
+				Object.keys(value).length >= 3 ||
+				(Object.keys(value).length === 2 && sliceVal === undefined)
+			) {
+				throw new Error(
+					"Can only use $slice in conjunction with $each when $push to array"
+				);
+			}
+
+			if (!util.isArray(eachVal)) {
+				throw new Error("$each requires an array value");
+			}
+
+			eachVal.forEach(function (v) {
+				obj[field].push(v);
+			});
+
+			if (sliceVal === undefined || typeof sliceVal !== "number") {
+				throw new Error("$slice requires a number value");
+			}
+
+			if (sliceVal === 0) {
+				obj[field] = [];
+			} else {
+				let start = 0;
+				let end = 0;
+				let n = obj[field].length;
+				if (sliceVal < 0) {
+					start = Math.max(0, n + sliceVal);
+					end = n;
+				} else if (sliceVal > 0) {
+					start = 0;
+					end = Math.min(n, sliceVal);
+				}
+				obj[field] = obj[field].slice(start, end);
+			}
+		} else {
+			obj[field].push(value);
+		}
+	},
+
+	/**
+	 * Add an element to an array field only if it is not already in it
+	 * No modification if the element is already in the array
+	 * Note that it doesn't check whether the original array contains duplicates
+	 */
+	$addToSet: function (
+		obj: keyedObjectG<Value[]>,
+		field: string,
+		value: Value
+	) {
+		// Create the array if it doesn't exist
+		if (!obj.hasOwnProperty(field)) {
+			obj[field] = [];
+		}
+
+		if (!util.isArray(obj[field])) {
+			throw new Error("Can't $addToSet an element on non-array values");
+		}
+
+		const eachVal = ((value as unknown) as keyedObject)["$each"];
+
+		if (value !== null && typeof value === "object" && eachVal) {
+			if (Object.keys(value).length > 1) {
+				throw new Error(
+					"Can't use another field in conjunction with $each on $addToSet modifier"
+				);
+			}
+			if (!util.isArray(eachVal)) {
+				throw new Error("$each requires an array value");
+			}
+
+			eachVal.forEach((v) =>
+				lastStepModifierFunctions.$addToSet(obj, field, v)
+			);
+		} else {
+			let addToSet = true;
+			for (let index = 0; index < obj[field].length; index++) {
+				const element = obj[field][index];
+				if (compareThings(element, value) === 0) {
+					addToSet = false;
+					break;
+				}
+			}
+			if (addToSet) {
+				obj[field].push(value);
+			}
+		}
+	},
+
+	/**
+	 * Remove the first or last element of an array
+	 */
+	$pop: function (obj: keyedObjectG<Value[]>, field: string, value: Value) {
+		if (!util.isArray(obj[field])) {
+			throw new Error("Can't $pop an element from non-array values");
+		}
+		if (typeof value !== "number") {
 			throw new Error(
-				"Can only use $slice in cunjunction with $each when $push to array"
+				value + " isn't an integer, can't use it with $pop"
 			);
 		}
-		if (!util.isArray(value.$each)) {
-			throw new Error("$each requires an array value");
-		}
-
-		value.$each.forEach(function (v) {
-			obj[field].push(v);
-		});
-
-		if (value.$slice === undefined || typeof value.$slice !== "number") {
+		if (value === 0) {
 			return;
 		}
 
-		if (value.$slice === 0) {
-			obj[field] = [];
+		if (value > 0) {
+			obj[field] = obj[field].slice(0, obj[field].length - 1);
 		} else {
-			var start,
-				end,
-				n = obj[field].length;
-			if (value.$slice < 0) {
-				start = Math.max(0, n + value.$slice);
-				end = n;
-			} else if (value.$slice > 0) {
-				start = 0;
-				end = Math.min(n, value.$slice);
+			obj[field] = obj[field].slice(1);
+		}
+	},
+
+	/**
+	 * Removes all instances of a value from an existing array
+	 */
+	$pull: function (obj: keyedObjectG<Value[]>, field: string, value: Value) {
+		if (!util.isArray(obj[field])) {
+			throw new Error("Can't $pull an element from non-array values");
+		}
+
+		let arr = obj[field];
+		for (let i = arr.length - 1; i >= 0; i -= 1) {
+			if (match(arr[i], value)) {
+				arr.splice(i, 1);
 			}
-			obj[field] = obj[field].slice(start, end);
 		}
-	} else {
-		obj[field].push(value);
-	}
-};
+	},
 
-/**
- * Add an element to an array field only if it is not already in it
- * No modification if the element is already in the array
- * Note that it doesn't check whether the original array contains duplicates
- */
-lastStepModifierFunctions.$addToSet = function (obj, field, value) {
-	var addToSet = true;
-
-	// Create the array if it doesn't exist
-	if (!obj.hasOwnProperty(field)) {
-		obj[field] = [];
-	}
-
-	if (!util.isArray(obj[field])) {
-		throw new Error("Can't $addToSet an element on non-array values");
-	}
-
-	if (value !== null && typeof value === "object" && value.$each) {
-		if (Object.keys(value).length > 1) {
-			throw new Error(
-				"Can't use another field in conjunction with $each"
-			);
-		}
-		if (!util.isArray(value.$each)) {
-			throw new Error("$each requires an array value");
+	/**
+	 * Increment a numeric field's value
+	 */
+	$inc: function (obj: keyedObjectG<number>, field: string, value: Value) {
+		if (typeof value !== "number") {
+			throw new Error(value + " must be a number");
 		}
 
-		value.$each.forEach(function (v) {
-			lastStepModifierFunctions.$addToSet(obj, field, v);
-		});
-	} else {
-		obj[field].forEach(function (v) {
-			if (compareThings(v, value) === 0) {
-				addToSet = false;
+		if (typeof obj[field] !== "number") {
+			if (!obj.hasOwnProperty(field)) {
+				obj[field] = value;
+			} else {
+				throw new Error(
+					"Can't use the $inc modifier on non-number fields"
+				);
 			}
-		});
-		if (addToSet) {
-			obj[field].push(value);
+		} else {
+			obj[field] = obj[field] + value;
 		}
-	}
-};
+	},
 
-/**
- * Remove the first or last element of an array
- */
-lastStepModifierFunctions.$pop = function (obj, field, value) {
-	if (!util.isArray(obj[field])) {
-		throw new Error("Can't $pop an element from non-array values");
-	}
-	if (typeof value !== "number") {
-		throw new Error(value + " isn't an integer, can't use it with $pop");
-	}
-	if (value === 0) {
-		return;
-	}
-
-	if (value > 0) {
-		obj[field] = obj[field].slice(0, obj[field].length - 1);
-	} else {
-		obj[field] = obj[field].slice(1);
-	}
-};
-
-/**
- * Removes all instances of a value from an existing array
- */
-lastStepModifierFunctions.$pull = function (obj, field, value) {
-	var arr, i;
-
-	if (!util.isArray(obj[field])) {
-		throw new Error("Can't $pull an element from non-array values");
-	}
-
-	arr = obj[field];
-	for (i = arr.length - 1; i >= 0; i -= 1) {
-		if (match(arr[i], value)) {
-			arr.splice(i, 1);
-		}
-	}
-};
-
-/**
- * Increment a numeric field's value
- */
-lastStepModifierFunctions.$inc = function (obj, field, value) {
-	if (typeof value !== "number") {
-		throw new Error(value + " must be a number");
-	}
-
-	if (typeof obj[field] !== "number") {
-		if (!_.has(obj, field)) {
+	/**
+	 * Updates the value of the field, only if specified field is greater than the current value of the field
+	 */
+	$max: function (obj: keyedObjectG<NSB>, field: string, value: NSB) {
+		if (typeof obj[field] === "undefined") {
 			obj[field] = value;
-		} else {
-			throw new Error("Don't use the $inc modifier on non-number fields");
+		} else if (value > obj[field]) {
+			obj[field] = value;
 		}
-	} else {
-		obj[field] += value;
-	}
-};
+	},
 
-/**
- * Updates the value of the field, only if specified field is greater than the current value of the field
- */
-lastStepModifierFunctions.$max = function (obj, field, value) {
-	if (typeof obj[field] === "undefined") {
-		obj[field] = value;
-	} else if (value > obj[field]) {
-		obj[field] = value;
-	}
-};
-
-/**
- * Updates the value of the field, only if specified field is smaller than the current value of the field
- */
-lastStepModifierFunctions.$min = function (obj, field, value) {
-	if (typeof obj[field] === "undefined") {
-		obj[field] = value;
-	} else if (value < obj[field]) {
-		obj[field] = value;
-	}
+	/**
+	 * Updates the value of the field, only if specified field is smaller than the current value of the field
+	 */
+	$min: function (obj: keyedObjectG<NSB>, field: string, value: NSB) {
+		if (typeof obj[field] === "undefined") {
+			obj[field] = value;
+		} else if (value < obj[field]) {
+			obj[field] = value;
+		}
+	},
 };
 
 // Given its name, create the complete modifier function
-function createModifierFunction(modifier) {
-	return function (obj, field, value) {
+function createModifierFunction(modifier: string) {
+	return function (obj: keyedObjectG<any>, field: string, value: any) {
 		var fieldParts = typeof field === "string" ? field.split(".") : field;
 
 		if (fieldParts.length === 1) {
@@ -530,7 +539,7 @@ function createModifierFunction(modifier) {
 			}
 			modifierFunctions[modifier](
 				obj[fieldParts[0]],
-				fieldParts.slice(1),
+				fieldParts.slice(1).join("."), // CHANGED
 				value
 			);
 		}
