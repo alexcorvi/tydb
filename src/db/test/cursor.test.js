@@ -8,30 +8,26 @@ var should = require("chai").should(),
 	model = require("../lib/model"),
 	Datastore = require("../lib/datastore"),
 	Persistence = require("../lib/persistence"),
-	Cursor = require("../lib/cursor");
+	Cursor = require("../lib/cursor"),
+	storage = require("../lib/storage").default;
 describe("Cursor", function () {
 	var d;
 
 	beforeEach(function (done) {
 		d = new Datastore({ filename: testDb });
 		d.filename.should.equal(testDb);
-		d.inMemoryOnly.should.equal(false);
 
 		async.waterfall(
 			[
 				function (cb) {
-					Persistence.ensureDirectoryExists(
-						path.dirname(testDb),
-						function () {
-							fs.exists(testDb, function (exists) {
-								if (exists) {
-									fs.unlink(testDb, cb);
-								} else {
-									return cb();
-								}
-							});
+					storage.mkdirp(path.dirname(testDb));
+					fs.exists(testDb, function (exists) {
+						if (exists) {
+							fs.unlink(testDb, cb);
+						} else {
+							return cb();
 						}
-					);
+					});
 				},
 				function (cb) {
 					d.loadDatabase(function (err) {
@@ -228,7 +224,7 @@ describe("Cursor", function () {
 
 		it("Sorting strings with custom string comparison function", function (done) {
 			var db = new Datastore({
-				inMemoryOnly: true,
+				filename: `workspace/b2${Math.random()}.db`,
 				autoload: true,
 				compareStrings: function (a, b) {
 					return a.length - b.length;

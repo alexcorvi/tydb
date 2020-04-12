@@ -8,33 +8,28 @@ var should = require("chai").should(),
 	model = require("../lib/model"),
 	customUtils = require("../lib/customUtils"),
 	Datastore = require("../lib/datastore"),
-	Persistence = require("../lib/persistence"),
+	Persistence = require("../lib/persistence").Persistence,
 	storage = require("../lib/storage").default,
 	child_process = require("child_process");
 
 describe("Persistence", function () {
 	var d;
-
 	beforeEach(function (done) {
 		d = new Datastore({ filename: testDb });
 		d.filename.should.equal(testDb);
-		d.inMemoryOnly.should.equal(false);
-
 		async.waterfall(
 			[
 				function (cb) {
-					Persistence.ensureDirectoryExists(
-						path.dirname(testDb),
-						function () {
-							fs.exists(testDb, function (exists) {
-								if (exists) {
-									fs.unlink(testDb, cb);
-								} else {
-									return cb();
-								}
+					storage.mkdirp(path.dirname(testDb));
+					fs.exists(testDb, function (exists) {
+						if (exists) {
+							fs.unlink(testDb, (err) => {
+								cb();
 							});
+						} else {
+							return cb();
 						}
-					);
+					});
 				},
 				function (cb) {
 					d.loadDatabase(function (err) {
@@ -637,8 +632,9 @@ describe("Persistence", function () {
 											},
 										});
 
-										d.persistence.persistCachedDatabase(
-											function () {
+										d.persistence
+											.persistCachedDatabase()
+											.then(function () {
 												var _data = fs.readFileSync(
 														hookTestFilename,
 														"utf8"
@@ -668,8 +664,10 @@ describe("Persistence", function () {
 												});
 
 												done();
-											}
-										);
+											})
+											.catch((e) => {
+												throw e;
+											});
 									}
 								);
 							}
@@ -757,13 +755,6 @@ describe("Persistence", function () {
 	}); // ==== End of 'Serialization hooks' ==== //
 
 	describe("Prevent dataloss when persisting data", function () {
-		it("Creating a datastore with in memory as true and a bad filename wont cause an error", function () {
-			new Datastore({
-				filename: "workspace/bad.db~",
-				inMemoryOnly: true,
-			});
-		});
-
 		it("Creating a persistent datastore with a bad filename will cause an error", function () {
 			(function () {
 				new Datastore({ filename: "workspace/bad.db~" });
@@ -772,7 +763,7 @@ describe("Persistence", function () {
 
 		it("If no file exists, ensureDataFileIntegrity creates an empty datafile", function (done) {
 			var p = new Persistence({
-				db: { inMemoryOnly: false, filename: "workspace/it.db" },
+				db: { filename: "workspace/it.db" },
 			});
 
 			if (fs.existsSync("workspace/it.db")) {
@@ -795,7 +786,6 @@ describe("Persistence", function () {
 					done();
 				})
 				.catch((e) => {
-					console.log(e);
 					assert.isNull(err);
 					done();
 				});
@@ -803,7 +793,7 @@ describe("Persistence", function () {
 
 		it("If only datafile exists, ensureDataFileIntegrity will use it", function (done) {
 			var p = new Persistence({
-				db: { inMemoryOnly: false, filename: "workspace/it.db" },
+				db: { filename: "workspace/it.db" },
 			});
 
 			if (fs.existsSync("workspace/it.db")) {
@@ -835,7 +825,7 @@ describe("Persistence", function () {
 
 		it("If temp datafile exists and datafile doesnt, ensureDataFileIntegrity will use it (cannot happen except upon first use)", function (done) {
 			var p = new Persistence({
-				db: { inMemoryOnly: false, filename: "workspace/it.db" },
+				db: { filename: "workspace/it.db" },
 			});
 
 			if (fs.existsSync("workspace/it.db")) {
@@ -933,22 +923,26 @@ describe("Persistence", function () {
 					fs.writeFileSync(testDb + "~", "something", "utf8");
 					fs.existsSync(testDb + "~").should.equal(true);
 
-					d.persistence.persistCachedDatabase(function (err) {
-						var contents = fs.readFileSync(testDb, "utf8");
-						assert.isNull(err);
-						fs.existsSync(testDb).should.equal(true);
-						fs.existsSync(testDb + "~").should.equal(false);
-						if (
-							!contents.match(
-								/^{"hello":"world","_id":"[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"}\n$/
-							)
-						) {
-							throw new Error(
-								"Datafile contents not as expected"
-							);
-						}
-						done();
-					});
+					d.persistence
+						.persistCachedDatabase()
+						.then(function () {
+							var contents = fs.readFileSync(testDb, "utf8");
+							fs.existsSync(testDb).should.equal(true);
+							fs.existsSync(testDb + "~").should.equal(false);
+							if (
+								!contents.match(
+									/^{"hello":"world","_id":"[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"}\n$/
+								)
+							) {
+								throw new Error(
+									"Datafile contents not as expected"
+								);
+							}
+							done();
+						})
+						.catch((err) => {
+							throw err;
+						});
 				});
 			});
 		});
@@ -970,22 +964,26 @@ describe("Persistence", function () {
 					fs.writeFileSync(testDb + "~", "bloup", "utf8");
 					fs.existsSync(testDb + "~").should.equal(true);
 
-					d.persistence.persistCachedDatabase(function (err) {
-						var contents = fs.readFileSync(testDb, "utf8");
-						assert.isNull(err);
-						fs.existsSync(testDb).should.equal(true);
-						fs.existsSync(testDb + "~").should.equal(false);
-						if (
-							!contents.match(
-								/^{"hello":"world","_id":"[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"}\n$/
-							)
-						) {
-							throw new Error(
-								"Datafile contents not as expected"
-							);
-						}
-						done();
-					});
+					d.persistence
+						.persistCachedDatabase()
+						.then(function () {
+							var contents = fs.readFileSync(testDb, "utf8");
+							fs.existsSync(testDb).should.equal(true);
+							fs.existsSync(testDb + "~").should.equal(false);
+							if (
+								!contents.match(
+									/^{"hello":"world","_id":"[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"}\n$/
+								)
+							) {
+								throw new Error(
+									"Datafile contents not as expected"
+								);
+							}
+							done();
+						})
+						.catch((err) => {
+							throw err;
+						});
 				});
 			});
 		});
@@ -1002,22 +1000,26 @@ describe("Persistence", function () {
 					fs.existsSync(testDb).should.equal(false);
 					fs.existsSync(testDb + "~").should.equal(true);
 
-					d.persistence.persistCachedDatabase(function (err) {
-						var contents = fs.readFileSync(testDb, "utf8");
-						assert.isNull(err);
-						fs.existsSync(testDb).should.equal(true);
-						fs.existsSync(testDb + "~").should.equal(false);
-						if (
-							!contents.match(
-								/^{"hello":"world","_id":"[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"}\n$/
-							)
-						) {
-							throw new Error(
-								"Datafile contents not as expected"
-							);
-						}
-						done();
-					});
+					d.persistence
+						.persistCachedDatabase()
+						.then(function (err) {
+							var contents = fs.readFileSync(testDb, "utf8");
+							fs.existsSync(testDb).should.equal(true);
+							fs.existsSync(testDb + "~").should.equal(false);
+							if (
+								!contents.match(
+									/^{"hello":"world","_id":"[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"}\n$/
+								)
+							) {
+								throw new Error(
+									"Datafile contents not as expected"
+								);
+							}
+							done();
+						})
+						.catch((err) => {
+							throw err;
+						});
 				});
 			});
 		});
@@ -1153,7 +1155,6 @@ describe("Persistence", function () {
 					);
 				})
 				.catch((err) => {
-					console.log(err);
 					assert.isFalse(!!err);
 				});
 		});

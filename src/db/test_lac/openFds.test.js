@@ -75,13 +75,15 @@ async.waterfall([
 						return i < 2 * N + 1;
 					},
 					function (cb) {
-						db.persistence.persistCachedDatabase(function (err) {
-							if (err) {
-								return cb(err);
-							}
-							i += 1;
-							return cb();
-						});
+						db.persistence
+							.persistCachedDatabase()
+							.then(function (err) {
+								i += 1;
+								return cb();
+							})
+							.catch((e) => {
+								return cb(e);
+							});
 					},
 					function (err) {
 						if (err) {

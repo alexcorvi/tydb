@@ -8,6 +8,7 @@ var should = require("chai").should(),
 	model = require("../lib/model"),
 	Datastore = require("../lib/datastore"),
 	Persistence = require("../lib/persistence"),
+	storage = require("../lib/storage").default,
 	reloadTimeUpperBound = 60; // In ms, an upper bound for the reload time used to check createdAt and updatedAt
 describe("Database", function () {
 	var d;
@@ -15,23 +16,19 @@ describe("Database", function () {
 	beforeEach(function (done) {
 		d = new Datastore({ filename: testDb });
 		d.filename.should.equal(testDb);
-		d.inMemoryOnly.should.equal(false);
-
 		async.waterfall(
 			[
 				function (cb) {
-					Persistence.ensureDirectoryExists(
-						path.dirname(testDb),
-						function () {
-							fs.exists(testDb, function (exists) {
-								if (exists) {
-									fs.unlink(testDb, cb);
-								} else {
-									return cb();
-								}
+					storage.mkdirp(path.dirname(testDb));
+					fs.exists(testDb, function (exists) {
+						if (exists) {
+							fs.unlink(testDb, (err) => {
+								cb();
 							});
+						} else {
+							return cb();
 						}
-					);
+					});
 				},
 				function (cb) {
 					d.loadDatabase(function (err) {
@@ -48,15 +45,6 @@ describe("Database", function () {
 	it("Constructor compatibility with v0.6-", function () {
 		var dbef = new Datastore("somefile");
 		dbef.filename.should.equal("somefile");
-		dbef.inMemoryOnly.should.equal(false);
-
-		var dbef = new Datastore("");
-		assert.isNull(dbef.filename);
-		dbef.inMemoryOnly.should.equal(true);
-
-		var dbef = new Datastore();
-		assert.isNull(dbef.filename);
-		dbef.inMemoryOnly.should.equal(true);
 	});
 
 	describe("Autoloading", function () {
@@ -2241,22 +2229,26 @@ describe("Database", function () {
 		});
 
 		it("createdAt property is unchanged and updatedAt correct after an update, even a complete document replacement", function (done) {
-			var d2 = new Datastore({ inMemoryOnly: true, timestampData: true });
-			d2.insert({ a: 1 });
-			d2.findOne({ a: 1 }, function (err, doc) {
+			var d2 = new Datastore({
+				timestampData: true,
+				filename: "workspace/tt.db",
+				autoload: true,
+			});
+			let r = Math.random() * Math.random();
+			d2.insert({ a: r });
+			d2.findOne({ a: r }, function (err, doc) {
 				var createdAt = doc.createdAt.getTime();
-
 				// Modifying update
 				setTimeout(function () {
-					d2.update({ a: 1 }, { $set: { b: 2 } }, {});
-					d2.findOne({ a: 1 }, function (err, doc) {
+					d2.update({ a: r }, { $set: { b: r } }, {});
+					d2.findOne({ a: r }, function (err, doc) {
 						doc.createdAt.getTime().should.equal(createdAt);
 						assert.isBelow(Date.now() - doc.updatedAt.getTime(), 5);
 
 						// Complete replacement
 						setTimeout(function () {
-							d2.update({ a: 1 }, { c: 3 }, {});
-							d2.findOne({ c: 3 }, function (err, doc) {
+							d2.update({ a: r }, { c: r }, {});
+							d2.findOne({ c: r }, function (err, doc) {
 								doc.createdAt.getTime().should.equal(createdAt);
 								assert.isBelow(
 									Date.now() - doc.updatedAt.getTime(),
@@ -2676,7 +2668,7 @@ describe("Database", function () {
 							d.ensureIndex({ fieldName: "planet" }, function (
 								err
 							) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								Object.keys(d.indexes).length.should.equal(2);
 								Object.keys(d.indexes)[0].should.equal("_id");
 								Object.keys(d.indexes)[1].should.equal(
@@ -3017,7 +3009,7 @@ describe("Database", function () {
 					d.insert({ a: 2, b: 45 }, function () {
 						d.insert({ a: 1, b: 3 }, function () {
 							d.ensureIndex({ fieldName: "b" }, function (err) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 
 								d.ensureIndex(
 									{ fieldName: "a", unique: true },
@@ -3041,13 +3033,13 @@ describe("Database", function () {
 
 			it("Can remove an index", function (done) {
 				d.ensureIndex({ fieldName: "e" }, function (err) {
-					assert.isNull(err);
+					assert.isUndefined(err);
 
 					Object.keys(d.indexes).length.should.equal(2);
 					assert.isNotNull(d.indexes.e);
 
 					d.removeIndex("e", function (err) {
-						assert.isNull(err);
+						assert.isUndefined(err);
 						Object.keys(d.indexes).length.should.equal(1);
 						assert.isUndefined(d.indexes.e);
 
@@ -4022,7 +4014,7 @@ describe("Database", function () {
 												sparse: true,
 											},
 											function (err) {
-												assert.isNull(err);
+												assert.isUndefined(err);
 												Object.keys(
 													db.indexes
 												).length.should.equal(3);
@@ -4127,11 +4119,11 @@ describe("Database", function () {
 						assert.isNull(err);
 
 						db.ensureIndex({ fieldName: "planet" }, function (err) {
-							assert.isNull(err);
+							assert.isUndefined(err);
 							db.ensureIndex({ fieldName: "another" }, function (
 								err
 							) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								Object.keys(db.indexes).length.should.equal(3);
 								Object.keys(db.indexes)[0].should.equal("_id");
 								Object.keys(db.indexes)[1].should.equal(
@@ -4176,7 +4168,7 @@ describe("Database", function () {
 
 									// Index is removed
 									db.removeIndex("planet", function (err) {
-										assert.isNull(err);
+										assert.isUndefined(err);
 										Object.keys(
 											db.indexes
 										).length.should.equal(2);
