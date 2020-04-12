@@ -141,7 +141,7 @@ const storage = {
 	 * @param {Function} callback signature: err
 	 */
 	ensureDataFileIntegrity: async function (filename: string) {
-		var tempFilename = filename + "~";
+		const tempFilename = filename + "~";
 		// write was successful
 		if (await storage.exists(filename)) {
 			return;
