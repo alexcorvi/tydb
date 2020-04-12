@@ -3,7 +3,7 @@ import { Executor } from "./executor";
 var customUtils = require("./customUtils"),
 	model = require("./model"),
 	async = require("async"),
-	Index = require("./indexes"),
+	Index = require("./indexes").default,
 	util = require("util"),
 	_ = require("underscore"),
 	Persistence = require("./persistence"),

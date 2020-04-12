@@ -209,9 +209,9 @@ function compareArrays(a: Value[], b: Value[]): 0 | 1 | -1 {
  *
  * @param {Function} _compareStrings String comparing function, returning -1, 0 or 1, overriding default string comparison (useful for languages with accented letters)
  */
-function compareThings(
-	a: Value,
-	b: Value,
+function compareThings<V>(
+	a: V,
+	b: V,
 	_compareStrings?: typeof compareNSB
 ): 0 | 1 | -1 {
 	const compareStrings = _compareStrings || compareNSB;
@@ -277,7 +277,10 @@ function compareThings(
 	let bKeys = Object.keys(b).sort();
 
 	for (let i = 0; i < Math.min(aKeys.length, bKeys.length); i += 1) {
-		let comp = compareThings(a[aKeys[i]], b[bKeys[i]]);
+		let comp = compareThings(
+			((a as unknown) as keyedObject)[aKeys[i]],
+			((b as unknown) as keyedObject)[bKeys[i]]
+		);
 
 		if (comp !== 0) {
 			return comp;

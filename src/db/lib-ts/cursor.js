@@ -1,5 +1,4 @@
 import * as model from "./model";
-
 /**
  * Manage access to data, be it to find, update or remove it
  */

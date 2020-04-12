@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const executor_1 = require("./executor");
-var customUtils = require("./customUtils"), model = require("./model"), async = require("async"), Index = require("./indexes"), util = require("util"), _ = require("underscore"), Persistence = require("./persistence"), Cursor = require("./cursor");
+var customUtils = require("./customUtils"), model = require("./model"), async = require("async"), Index = require("./indexes").default, util = require("util"), _ = require("underscore"), Persistence = require("./persistence"), Cursor = require("./cursor");
 /**
  * Create a new collection
  * @param {String} options.filename Optional, datastore will be in-memory only if not provided

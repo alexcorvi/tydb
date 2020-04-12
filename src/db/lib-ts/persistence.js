@@ -11,7 +11,7 @@ var path = require("path"),
 	model = require("./model"),
 	async = require("async"),
 	customUtils = require("./customUtils"),
-	Index = require("./indexes");
+	Index = require("./indexes").default;
 /**
  * Create a new Persistence object for database options.db
  * @param {Datastore} options.db

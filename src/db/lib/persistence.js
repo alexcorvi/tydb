@@ -10,7 +10,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const storage_1 = __importDefault(require("./storage"));
-var path = require("path"), model = require("./model"), async = require("async"), customUtils = require("./customUtils"), Index = require("./indexes");
+var path = require("path"), model = require("./model"), async = require("async"), customUtils = require("./customUtils"), Index = require("./indexes").default;
 /**
  * Create a new Persistence object for database options.db
  * @param {Datastore} options.db
