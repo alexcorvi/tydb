@@ -6,7 +6,7 @@ var customUtils = require("./customUtils"),
 	Index = require("./indexes").default,
 	util = require("util"),
 	_ = require("underscore"),
-	Persistence = require("./persistence"),
+	Persistence = require("./persistence").Persistence,
 	Cursor = require("./cursor");
 /**
  * Create a new collection
@@ -159,14 +159,14 @@ Datastore.prototype.ensureIndex = function (options, cb) {
 	}
 
 	// We may want to force all options to be persisted including defaults, not just the ones passed the index creation function
-	this.persistence.persistNewState([{ $$indexCreated: options }], function (
-		err
-	) {
-		if (err) {
-			return callback(err);
-		}
-		return callback(null);
-	});
+	this.persistence
+		.persistNewState([{ $$indexCreated: options }])
+		.then((x) => {
+			callback();
+		})
+		.catch((err) => {
+			callback(err);
+		});
 };
 
 /**
@@ -179,14 +179,14 @@ Datastore.prototype.removeIndex = function (fieldName, cb) {
 
 	delete this.indexes[fieldName];
 
-	this.persistence.persistNewState([{ $$indexRemoved: fieldName }], function (
-		err
-	) {
-		if (err) {
-			return callback(err);
-		}
-		return callback(null);
-	});
+	this.persistence
+		.persistNewState([{ $$indexRemoved: fieldName }])
+		.then((x) => {
+			callback();
+		})
+		.catch((err) => {
+			callback(err);
+		});
 };
 
 /**
@@ -418,15 +418,16 @@ Datastore.prototype._insert = function (newDoc, cb) {
 		return callback(e);
 	}
 
-	this.persistence.persistNewState(
-		util.isArray(preparedDoc) ? preparedDoc : [preparedDoc],
-		function (err) {
-			if (err) {
-				return callback(err);
-			}
+	this.persistence
+		.persistNewState(
+			util.isArray(preparedDoc) ? preparedDoc : [preparedDoc]
+		)
+		.then((x) => {
 			return callback(null, model.deepCopy(preparedDoc));
-		}
-	);
+		})
+		.catch((err) => {
+			return callback(err);
+		});
 };
 
 /**
@@ -757,23 +758,25 @@ Datastore.prototype._update = function (query, updateQuery, options, cb) {
 
 				// Update the datafile
 				var updatedDocs = _.pluck(modifications, "newDoc");
-				self.persistence.persistNewState(updatedDocs, function (err) {
-					if (err) {
-						return callback(err);
-					}
-					if (!options.returnUpdatedDocs) {
-						return callback(null, numReplaced);
-					} else {
-						var updatedDocsDC = [];
-						updatedDocs.forEach(function (doc) {
-							updatedDocsDC.push(model.deepCopy(doc));
-						});
-						if (!multi) {
-							updatedDocsDC = updatedDocsDC[0];
+				self.persistence
+					.persistNewState(updatedDocs)
+					.then((x) => {
+						if (!options.returnUpdatedDocs) {
+							return callback(null, numReplaced);
+						} else {
+							var updatedDocsDC = [];
+							updatedDocs.forEach(function (doc) {
+								updatedDocsDC.push(model.deepCopy(doc));
+							});
+							if (!multi) {
+								updatedDocsDC = updatedDocsDC[0];
+							}
+							return callback(null, numReplaced, updatedDocsDC);
 						}
-						return callback(null, numReplaced, updatedDocsDC);
-					}
-				});
+					})
+					.catch((err) => {
+						callback(err);
+					});
 			});
 		},
 	]);
@@ -824,12 +827,14 @@ Datastore.prototype._remove = function (query, options, cb) {
 			return callback(err);
 		}
 
-		self.persistence.persistNewState(removedDocs, function (err) {
-			if (err) {
+		self.persistence
+			.persistNewState(removedDocs)
+			.then((x) => {
+				return callback(null, numRemoved);
+			})
+			.catch((err) => {
 				return callback(err);
-			}
-			return callback(null, numRemoved);
-		});
+			});
 	});
 };
 

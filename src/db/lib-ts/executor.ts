@@ -41,7 +41,6 @@ export class Executor {
 				cb();
 			});
 		}
-
 		task.fn.apply(task.this, newArguments);
 	}, 1);
 
