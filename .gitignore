@@ -12,3 +12,4 @@ stats.json
 testdb
 workspace
 temp/*
+*.db
