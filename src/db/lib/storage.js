@@ -137,7 +137,7 @@ const storage = {
      */
     ensureDataFileIntegrity: function (filename) {
         return __awaiter(this, void 0, void 0, function* () {
-            var tempFilename = filename + "~";
+            const tempFilename = filename + "~";
             // write was successful
             if (yield storage.exists(filename)) {
                 return;

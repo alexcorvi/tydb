@@ -31,3 +31,12 @@ function uid() {
         lut[(d3 >> 24) & 0xff]);
 }
 exports.uid = uid;
+function randomString(len) {
+    return Array.from(new Uint8Array(120))
+        .map((x) => Math.random().toString(36))
+        .join("")
+        .split("0.")
+        .join("")
+        .substr(0, len);
+}
+exports.randomString = randomString;
