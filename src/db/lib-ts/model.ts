@@ -563,7 +563,7 @@ Object.keys(lastStepModifierFunctions).forEach(function (modifier) {
 /**
  * Modify a DB object according to an update query
  */
-function modify(obj: keyedObject, updateQuery: { $set: {} }) {
+function modify(obj: keyedObject, updateQuery: any) {
 	var keys = Object.keys(updateQuery);
 	let firstChars = keys.map((x) => x.charAt(0));
 	let dollarFirstChars = firstChars.filter((x) => x === "$");

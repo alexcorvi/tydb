@@ -7,7 +7,7 @@ var customUtils = require("./customUtils"),
 	util = require("util"),
 	_ = require("underscore"),
 	Persistence = require("./persistence").Persistence,
-	Cursor = require("./cursor");
+	Cursor = require("./cursor").default;
 /**
  * Create a new collection
  * @param {String} options.filename Optional, datastore will be in-memory only if not provided

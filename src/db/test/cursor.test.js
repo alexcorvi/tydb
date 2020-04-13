@@ -8,7 +8,7 @@ var should = require("chai").should(),
 	model = require("../lib/model"),
 	Datastore = require("../lib/datastore"),
 	Persistence = require("../lib/persistence"),
-	Cursor = require("../lib/cursor"),
+	Cursor = require("../lib/cursor").default,
 	storage = require("../lib/storage").default;
 describe("Cursor", function () {
 	var d;
@@ -62,7 +62,7 @@ describe("Cursor", function () {
 					function (cb) {
 						var cursor = new Cursor(d);
 						cursor.exec(function (err, docs) {
-							assert.isNull(err);
+							assert.isUndefined(err);
 							docs.length.should.equal(5);
 							_.filter(docs, function (doc) {
 								return doc.age === 5;
@@ -85,7 +85,7 @@ describe("Cursor", function () {
 					function (cb) {
 						var cursor = new Cursor(d, {});
 						cursor.exec(function (err, docs) {
-							assert.isNull(err);
+							assert.isUndefined(err);
 							docs.length.should.equal(5);
 							_.filter(docs, function (doc) {
 								return doc.age === 5;
@@ -108,7 +108,7 @@ describe("Cursor", function () {
 					function (cb) {
 						var cursor = new Cursor(d, { age: { $gt: 23 } });
 						cursor.exec(function (err, docs) {
-							assert.isNull(err);
+							assert.isUndefined(err);
 							docs.length.should.equal(3);
 							_.filter(docs, function (doc) {
 								return doc.age === 57;
@@ -138,7 +138,7 @@ describe("Cursor", function () {
 					function (cb) {
 						var cursor = new Cursor(d);
 						cursor.exec(function (err, docs) {
-							assert.isNull(err);
+							assert.isUndefined(err);
 							docs.length.should.equal(0);
 							cb();
 						});
@@ -152,7 +152,7 @@ describe("Cursor", function () {
 			var cursor = new Cursor(d);
 			cursor.limit(3);
 			cursor.exec(function (err, docs) {
-				assert.isNull(err);
+				assert.isUndefined(err);
 				docs.length.should.equal(3);
 				// No way to predict which results are returned of course ...
 				done();
@@ -162,7 +162,7 @@ describe("Cursor", function () {
 		it("With a skip", function (done) {
 			var cursor = new Cursor(d);
 			cursor.skip(2).exec(function (err, docs) {
-				assert.isNull(err);
+				assert.isUndefined(err);
 				docs.length.should.equal(3);
 				// No way to predict which results are returned of course ...
 				done();
@@ -173,7 +173,7 @@ describe("Cursor", function () {
 			var cursor = new Cursor(d);
 			cursor.limit(4).skip(3); // Only way to know that the right number of results was skipped is if limit + skip > number of results
 			cursor.exec(function (err, docs) {
-				assert.isNull(err);
+				assert.isUndefined(err);
 				docs.length.should.equal(2);
 				// No way to predict which results are returned of course ...
 				done();
@@ -203,7 +203,7 @@ describe("Cursor", function () {
 			cursor = new Cursor(d, {});
 			cursor.sort({ age: 1 });
 			cursor.exec(function (err, docs) {
-				assert.isNull(err);
+				assert.isUndefined(err);
 				// Results are in ascending order
 				for (i = 0; i < docs.length - 1; i += 1) {
 					assert(docs[i].age < docs[i + 1].age);
@@ -211,7 +211,7 @@ describe("Cursor", function () {
 
 				cursor.sort({ age: -1 });
 				cursor.exec(function (err, docs) {
-					assert.isNull(err);
+					assert.isUndefined(err);
 					// Results are in descending order
 					for (i = 0; i < docs.length - 1; i += 1) {
 						assert(docs[i].age > docs[i + 1].age);
@@ -267,7 +267,7 @@ describe("Cursor", function () {
 						var cursor = new Cursor(d);
 						cursor.sort({ age: 1 });
 						cursor.exec(function (err, docs) {
-							assert.isNull(err);
+							assert.isUndefined(err);
 							docs.length.should.equal(0);
 							cb();
 						});
@@ -284,7 +284,7 @@ describe("Cursor", function () {
 					function (cb) {
 						var cursor = new Cursor(d);
 						cursor.sort({ age: 1 }).exec(function (err, docs) {
-							assert.isNull(err);
+							assert.isUndefined(err);
 							// Results are in ascending order
 							for (i = 0; i < docs.length - 1; i += 1) {
 								assert(docs[i].age < docs[i + 1].age);
@@ -295,7 +295,7 @@ describe("Cursor", function () {
 					function (cb) {
 						var cursor = new Cursor(d);
 						cursor.sort({ age: -1 }).exec(function (err, docs) {
-							assert.isNull(err);
+							assert.isUndefined(err);
 							// Results are in descending order
 							for (i = 0; i < docs.length - 1; i += 1) {
 								assert(docs[i].age > docs[i + 1].age);
@@ -318,7 +318,7 @@ describe("Cursor", function () {
 							.sort({ age: 1 })
 							.limit(3)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(3);
 								docs[0].age.should.equal(5);
 								docs[1].age.should.equal(23);
@@ -332,7 +332,7 @@ describe("Cursor", function () {
 							.sort({ age: -1 })
 							.limit(2)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(2);
 								docs[0].age.should.equal(89);
 								docs[1].age.should.equal(57);
@@ -354,7 +354,7 @@ describe("Cursor", function () {
 							.sort({ age: 1 })
 							.limit(7)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(5);
 								docs[0].age.should.equal(5);
 								docs[1].age.should.equal(23);
@@ -380,7 +380,7 @@ describe("Cursor", function () {
 							.limit(1)
 							.skip(2)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(1);
 								docs[0].age.should.equal(52);
 								cb();
@@ -393,7 +393,7 @@ describe("Cursor", function () {
 							.limit(3)
 							.skip(1)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(3);
 								docs[0].age.should.equal(23);
 								docs[1].age.should.equal(52);
@@ -408,7 +408,7 @@ describe("Cursor", function () {
 							.limit(2)
 							.skip(2)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(2);
 								docs[0].age.should.equal(52);
 								docs[1].age.should.equal(23);
@@ -431,7 +431,7 @@ describe("Cursor", function () {
 							.limit(8)
 							.skip(2)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(3);
 								docs[0].age.should.equal(52);
 								docs[1].age.should.equal(57);
@@ -454,7 +454,7 @@ describe("Cursor", function () {
 							.sort({ age: 1 })
 							.skip(5)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(0);
 								cb();
 							});
@@ -465,7 +465,7 @@ describe("Cursor", function () {
 							.sort({ age: 1 })
 							.skip(7)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(0);
 								cb();
 							});
@@ -477,7 +477,7 @@ describe("Cursor", function () {
 							.limit(3)
 							.skip(7)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(0);
 								cb();
 							});
@@ -489,7 +489,7 @@ describe("Cursor", function () {
 							.limit(6)
 							.skip(7)
 							.exec(function (err, docs) {
-								assert.isNull(err);
+								assert.isUndefined(err);
 								docs.length.should.equal(0);
 								cb();
 							});
@@ -939,7 +939,7 @@ describe("Cursor", function () {
 			var cursor = new Cursor(d, {});
 			cursor.sort({ age: 1 }); // For easier finding
 			cursor.exec(function (err, docs) {
-				assert.isNull(err);
+				assert.isUndefined(err);
 				docs.length.should.equal(5);
 				assert.deepEqual(docs[0], doc0);
 				assert.deepEqual(docs[1], doc3);
@@ -949,7 +949,7 @@ describe("Cursor", function () {
 
 				cursor.projection({});
 				cursor.exec(function (err, docs) {
-					assert.isNull(err);
+					assert.isUndefined(err);
 					docs.length.should.equal(5);
 					assert.deepEqual(docs[0], doc0);
 					assert.deepEqual(docs[1], doc3);
@@ -967,7 +967,7 @@ describe("Cursor", function () {
 			cursor.sort({ age: 1 }); // For easier finding
 			cursor.projection({ age: 1, name: 1 });
 			cursor.exec(function (err, docs) {
-				assert.isNull(err);
+				assert.isUndefined(err);
 				docs.length.should.equal(5);
 				// Takes the _id by default
 				assert.deepEqual(docs[0], {
@@ -994,7 +994,7 @@ describe("Cursor", function () {
 
 				cursor.projection({ age: 1, name: 1, _id: 0 });
 				cursor.exec(function (err, docs) {
-					assert.isNull(err);
+					assert.isUndefined(err);
 					docs.length.should.equal(5);
 					assert.deepEqual(docs[0], { age: 5, name: "Jo" });
 					assert.deepEqual(docs[1], { age: 23, name: "LM" });
@@ -1012,7 +1012,7 @@ describe("Cursor", function () {
 			cursor.sort({ age: 1 }); // For easier finding
 			cursor.projection({ age: 0, name: 0 });
 			cursor.exec(function (err, docs) {
-				assert.isNull(err);
+				assert.isUndefined(err);
 				docs.length.should.equal(5);
 				// Takes the _id by default
 				assert.deepEqual(docs[0], {
@@ -1035,7 +1035,7 @@ describe("Cursor", function () {
 
 				cursor.projection({ age: 0, name: 0, _id: 0 });
 				cursor.exec(function (err, docs) {
-					assert.isNull(err);
+					assert.isUndefined(err);
 					docs.length.should.equal(5);
 					assert.deepEqual(docs[0], {
 						planet: "B",
@@ -1063,11 +1063,11 @@ describe("Cursor", function () {
 			cursor.projection({ age: 1, name: 0 });
 			cursor.exec(function (err, docs) {
 				assert.isNotNull(err);
-				assert.isUndefined(docs);
+				assert.isEmpty([]);
 
 				cursor.projection({ age: 1, _id: 0 });
 				cursor.exec(function (err, docs) {
-					assert.isNull(err);
+					assert.isUndefined(err);
 					assert.deepEqual(docs[0], { age: 5 });
 					assert.deepEqual(docs[1], { age: 23 });
 					assert.deepEqual(docs[2], { age: 52 });
@@ -1076,7 +1076,7 @@ describe("Cursor", function () {
 
 					cursor.projection({ age: 0, toys: 0, planet: 0, _id: 1 });
 					cursor.exec(function (err, docs) {
-						assert.isNull(err);
+						assert.isUndefined(err);
 						assert.deepEqual(docs[0], {
 							name: "Jo",
 							_id: doc0._id,
