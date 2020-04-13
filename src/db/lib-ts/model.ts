@@ -17,8 +17,6 @@ type Value = keyedObject | Array<PrimitiveValue | keyedObject> | PrimitiveValue;
 
 /**
  * Check a key throw an error if the key is non valid
- * @param {String} k key
- * @param {Model} v value, needed to treat the Date edge case
  * Non-treatable edge cases here: if part of the object if of the form { $$date: number } or { $$deleted: true }
  * Its serialized-then-deserialized version it will transformed into a Date object
  * But you really need to want it to trigger such behaviour, even when warned not to use '$' at the beginning of the field names...
@@ -207,7 +205,6 @@ function compareArrays(a: Value[], b: Value[]): 0 | 1 | -1 {
  * If two objects don't have the same type, the (arbitrary) type hierarchy is: undefined, null, number, strings, boolean, dates, arrays, objects
  * Return -1 if a < b, 1 if a > b and 0 if a = b (note that equality here is NOT the same as defined in areThingsEqual!)
  *
- * @param {Function} _compareStrings String comparing function, returning -1, 0 or 1, overriding default string comparison (useful for languages with accented letters)
  */
 function compareThings<V>(
 	a: V,
@@ -298,9 +295,6 @@ function compareThings<V>(
  * The signature of modifier functions is as follows
  * Their structure is always the same: recursively follow the dot notation while creating
  * the nested documents if needed, then apply the "last step modifier"
- * @param {Object} obj The model to modify
- * @param {String} field Can contain dots, in that case that means we will set a subfield recursively
- * @param {Model} value
  */
 
 const lastStepModifierFunctions: ModifierGroup = {
@@ -563,7 +557,7 @@ Object.keys(lastStepModifierFunctions).forEach(function (modifier) {
 /**
  * Modify a DB object according to an update query
  */
-function modify(obj: keyedObject, updateQuery: any) {
+function modify<G extends { _id?: string }>(obj: G, updateQuery: any): G {
 	var keys = Object.keys(updateQuery);
 	let firstChars = keys.map((x) => x.charAt(0));
 	let dollarFirstChars = firstChars.filter((x) => x === "$");
@@ -582,7 +576,7 @@ function modify(obj: keyedObject, updateQuery: any) {
 		throw new Error("You cannot mix modifiers and normal fields");
 	}
 
-	let newDoc: keyedObject = {};
+	let newDoc: G;
 
 	if (dollarFirstChars.length === 0) {
 		// Simply replace the object with the update query contents
@@ -632,8 +626,6 @@ function modify(obj: keyedObject, updateQuery: any) {
 
 /**
  * Get a value from object with dot notation
- * @param {Object} obj
- * @param {String} field
  */
 function getDotValue(obj: any, field: string): Value {
 	const fieldParts = typeof field === "string" ? field.split(".") : field;
@@ -770,8 +762,6 @@ const comparisonFunctions: ComparisonGroup = {};
 
 /**
  * Arithmetic and comparison operators
- * @param {Native value} a Value in the object
- * @param {Native value} b Value in the query
  */
 comparisonFunctions.$eq = function (a, b) {
 	return a === b;
@@ -890,8 +880,6 @@ const logicalOperators: keyedObjectG<(obj: any, query: any[]) => boolean> = {};
 
 /**
  * Match any of the subqueries
- * @param {Model} obj
- * @param {Array of Queries} query
  */
 logicalOperators.$or = function (obj, query) {
 	var i;

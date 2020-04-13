@@ -2,6 +2,11 @@ import { AVLTree } from "./avl";
 import * as model from "./model";
 import * as util from "util";
 
+interface Pair<Doc> {
+	newDoc: Doc;
+	oldDoc: Doc;
+}
+
 /**
  * Two indexed pointers are equal iif they point to the same place
  */
@@ -12,7 +17,7 @@ function checkValueEquality<T>(a: T, b: T) {
 /**
  * Type-aware projection
  */
-function projectForUnique(elt: any) {
+function projectForUnique<Key>(elt: Key): string | Key {
 	if (elt === null) {
 		return "$NU";
 	}
@@ -25,14 +30,14 @@ function projectForUnique(elt: any) {
 	if (typeof elt === "number") {
 		return "$NO" + elt;
 	}
-	if (elt.getTime) {
+	if (elt instanceof Date) {
 		return "$DA" + elt.getTime();
 	}
 
 	return elt; // Arrays and objects, will check for pointer equality
 }
 
-function uniqueProjectedKeys(key: any[]) {
+function uniqueProjectedKeys<Key>(key: Key[]): (Key | string)[] {
 	return Array.from(new Set(key.map((x) => projectForUnique(x)))).map(
 		(key) => {
 			if (typeof key === "string") {
@@ -42,7 +47,7 @@ function uniqueProjectedKeys(key: any[]) {
 	);
 }
 
-class Index<Key, Value> {
+class Index<Key, Doc extends { _id?: string }> {
 	fieldName: string = "";
 	unique: boolean = false;
 	sparse: boolean = false;
@@ -53,7 +58,7 @@ class Index<Key, Value> {
 		checkValueEquality,
 	};
 
-	tree: AVLTree<Key, Value>;
+	tree: AVLTree<Key, Doc>;
 
 	constructor({
 		fieldName,
@@ -62,7 +67,7 @@ class Index<Key, Value> {
 	}: {
 		fieldName: string;
 		unique: boolean;
-		sparse: boolean;
+		sparse?: boolean;
 	}) {
 		if (fieldName) {
 			this.fieldName = fieldName;
@@ -78,7 +83,7 @@ class Index<Key, Value> {
 		this.tree = new AVLTree(this.treeOptions);
 	}
 
-	reset(newData: any) {
+	reset(newData?: any) {
 		this.tree = new AVLTree(this.treeOptions);
 		if (newData) {
 			this.insert(newData);
@@ -90,13 +95,13 @@ class Index<Key, Value> {
 	 * If an array is passed, we insert all its elements (if one insertion fails the index is not modified)
 	 * O(log(n))
 	 */
-	insert(doc: any) {
+	insert(doc: Doc | Doc[]) {
 		if (util.isArray(doc)) {
 			this.insertMultipleDocs(doc);
 			return;
 		}
 
-		let key = model.getDotValue(doc, this.fieldName);
+		let key = (model.getDotValue(doc, this.fieldName) as unknown) as Key;
 
 		// We don't index documents that don't contain the field if the index is sparse
 		if (key === undefined && this.sparse) {
@@ -136,7 +141,7 @@ class Index<Key, Value> {
 	 * If a constraint is violated, the changes should be rolled back and an error thrown
 	 *
 	 */
-	private insertMultipleDocs(docs: any[]) {
+	private insertMultipleDocs(docs: Doc[]) {
 		let error;
 		let failingI = -1;
 
@@ -165,20 +170,20 @@ class Index<Key, Value> {
 	 * The remove operation is safe with regards to the 'unique' constraint
 	 * O(log(n))
 	 */
-	remove(doc: any) {
+	remove(doc: Doc | Doc[]) {
 		if (util.isArray(doc)) {
 			doc.forEach((d) => this.remove(d));
 			return;
 		}
 
-		let key = model.getDotValue(doc, this.fieldName);
+		let key = (model.getDotValue(doc, this.fieldName) as unknown) as Key;
 
 		if (key === undefined && this.sparse) {
 			return;
 		}
 
 		if (!util.isArray(key)) {
-			this.tree.delete(key as any, doc);
+			this.tree.delete(key, doc);
 		} else {
 			uniqueProjectedKeys(key).forEach((_key) =>
 				this.tree.delete(_key, doc)
@@ -191,17 +196,18 @@ class Index<Key, Value> {
 	 * If a constraint is violated, changes are rolled back and an error thrown
 	 * Naive implementation, still in O(log(n))
 	 */
-	update(oldDoc: any, newDoc?: any) {
+	update(oldDoc: Doc | Array<Pair<Doc>>, newDoc?: Doc) {
 		if (util.isArray(oldDoc)) {
 			this.updateMultipleDocs(oldDoc);
 			return;
-		}
-		this.remove(oldDoc);
-		try {
-			this.insert(newDoc);
-		} catch (e) {
-			this.insert(oldDoc);
-			throw e;
+		} else if (newDoc) {
+			this.remove(oldDoc);
+			try {
+				this.insert(newDoc);
+			} catch (e) {
+				this.insert(oldDoc);
+				throw e;
+			}
 		}
 	}
 
@@ -210,7 +216,7 @@ class Index<Key, Value> {
 	 * If a constraint is violated, the changes need to be rolled back
 	 * and an error thrown
 	 */
-	private updateMultipleDocs(pairs: { newDoc: any; oldDoc: any }[]) {
+	private updateMultipleDocs(pairs: Pair<Doc>[]) {
 		let failingI = -1;
 		let error;
 
@@ -245,13 +251,14 @@ class Index<Key, Value> {
 	/**
 	 * Revert an update
 	 */
-	revertUpdate(oldDoc: any, newDoc: any) {
-		var revert: { newDoc: any; oldDoc: any }[] = [];
+	revertUpdate(oldDoc: Doc | Array<Pair<Doc>>, newDoc?: Doc) {
+		var revert: { newDoc: Doc; oldDoc: Doc }[] = [];
 
-		if (!util.isArray(oldDoc)) {
+		// convert all util.isArray to Array.isArray
+		if (!Array.isArray(oldDoc) && newDoc) {
 			this.update(newDoc, oldDoc);
-		} else {
-			oldDoc.forEach(function (pair) {
+		} else if (Array.isArray(oldDoc)) {
+			oldDoc.forEach((pair) => {
 				revert.push({ oldDoc: pair.newDoc, newDoc: pair.oldDoc });
 			});
 			this.update(revert);
@@ -261,15 +268,17 @@ class Index<Key, Value> {
 	/**
 	 * Get all documents in index whose key match value (if it is a Thing) or one of the elements of value (if it is an array of Things)
 	 */
-	getMatching(value: any) {
-		if (!util.isArray(value)) {
-			return this.tree.search(value);
+	getMatching(key: Key) {
+		if (!util.isArray(key)) {
+			return this.tree.search(key);
 		} else {
-			let res: any[] = [];
-			let resHT: { [key: string]: any } = {};
-			value.forEach((v) => {
-				this.getMatching(v).forEach((doc) => {
-					resHT[doc._id] = doc;
+			let res: Doc[] = [];
+			let resHT: { [key: string]: Doc } = {};
+			key.forEach((v) => {
+				this.getMatching(v).forEach((doc: Doc) => {
+					if (doc._id) {
+						resHT[doc._id] = doc;
+					}
 				});
 			});
 			Object.keys(resHT).forEach(function (_id) {
@@ -280,7 +289,7 @@ class Index<Key, Value> {
 	}
 
 	getAll() {
-		let data: Value[] = [];
+		let data: Doc[] = [];
 		this.tree.executeOnEveryNode(function (node) {
 			for (let i = 0; i < node.data.length; i++) {
 				data.push(node.data[i]);

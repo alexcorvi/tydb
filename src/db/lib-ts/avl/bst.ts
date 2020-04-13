@@ -375,7 +375,10 @@ class BST<K, V> {
 		return nearest ? nearest.data : undefined;
 	}
 
-	_searchNearestLte(key: K, nearestSoFar?: BST<K, V>): BST<K, V> | undefined {
+	private _searchNearestLte(
+		key: K,
+		nearestSoFar?: BST<K, V>
+	): BST<K, V> | undefined {
 		if (!this.hasOwnProperty("key")) {
 			return undefined;
 		}
@@ -445,7 +448,10 @@ class BST<K, V> {
 		return nearest ? nearest.data : undefined;
 	}
 
-	_searchNearestGte(key: K, nearestSoFar?: BST<K, V>): BST<K, V> | undefined {
+	private _searchNearestGte(
+		key: K,
+		nearestSoFar?: BST<K, V>
+	): BST<K, V> | undefined {
 		if (!this.hasOwnProperty("key")) {
 			return undefined;
 		}
@@ -514,7 +520,10 @@ class BST<K, V> {
 		return nearest ? nearest.data : undefined;
 	}
 
-	_searchNearest(key: K, nearestSoFar?: BST<K, V>): BST<K, V> | undefined {
+	private _searchNearest(
+		key: K,
+		nearestSoFar?: BST<K, V>
+	): BST<K, V> | undefined {
 		if (!this.hasOwnProperty("key")) {
 			return undefined;
 		}

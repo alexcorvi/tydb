@@ -63,8 +63,6 @@ const storage = {
 
 	/**
 	 * Flush data in OS buffer to storage if corresponding option is set
-	 * @param {String} options.filename
-	 * @param {Boolean} options.isDir Optional, defaults to false
 	 * If options is a string, it is assumed that the flush of the file (not dir) called options was requested
 	 */
 	flushToStorage: function (
@@ -111,9 +109,6 @@ const storage = {
 
 	/**
 	 * Fully write or rewrite the datafile, immune to crashes during the write operation (data will not be lost)
-	 * @param {String} filename
-	 * @param {String} data
-	 * @param {Function} cb Optional callback, signature: err
 	 */
 
 	crashSafeWriteFile: async function (filename: string, data: string) {
@@ -137,8 +132,6 @@ const storage = {
 
 	/**
 	 * Ensure the data file contains all the data, even if there was a crash during a full file write
-	 * @param {String} filename
-	 * @param {Function} callback signature: err
 	 */
 	ensureDataFileIntegrity: async function (filename: string) {
 		const tempFilename = filename + "~";

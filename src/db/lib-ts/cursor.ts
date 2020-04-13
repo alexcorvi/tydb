@@ -1,16 +1,18 @@
+import Datastore from "./datastore";
 import * as model from "./model";
+
+interface BaseSchema {
+	_id: string;
+	updatedAt: Date;
+	createdAt: Date;
+}
 
 /**
  * Create a new cursor for this collection
- * @param {Datastore} db - The datastore this cursor is bound to
- * @param {Query} query - The query this cursor will operate on
- * @param {Function} execFn - Handler to be executed after cursor has found the results and before the callback passed to find/findOne/update/remove
  */
-class Cursor {
-	db: any; // TODO place datastore instance
+class Cursor<G extends Partial<BaseSchema>> {
+	db: Datastore<G>;
 	query: { [key: string]: any };
-
-	execFn: ((err: any, res: any, cb: any) => void) | undefined;
 
 	private _limit: number | undefined;
 	private _skip: number | undefined;
@@ -18,12 +20,9 @@ class Cursor {
 
 	private _projection: undefined | { [key: string]: number };
 
-	constructor(db: any, query: any, execFn?: any) {
+	constructor(db: any, query: any) {
 		this.db = db;
 		this.query = query || {};
-		if (execFn) {
-			this.execFn = execFn;
-		}
 	}
 
 	/**
@@ -98,7 +97,7 @@ class Cursor {
 						delete toPush.$set[k];
 					}
 				});
-				toPush = model.modify({}, toPush);
+				toPush = model.modify({} as any, toPush);
 			} else {
 				// omit-type projection
 				toPush = { $unset: {} };
@@ -121,103 +120,89 @@ class Cursor {
 	/**
 	 * Get all matching elements
 	 * Will return pointers to matched elements (shallow copies), returning full copies is the role of find or findOne
-	 * This is an internal function, use exec which uses the executor
 	 *
 	 */
-	_exec(_callback: (err?: any, result?: any[]) => void) {
-		let res: any[] = [];
+	async __exec_unsafe() {
+		let res: G[] = [];
 		let added = 0;
 		let skipped = 0;
 		let error: any = undefined;
+		const candidates = await this.db.getCandidates(this.query);
 
-		const callback = (error?: any, res?: any[]) => {
-			if (this.execFn) {
-				return this.execFn(error, res, _callback);
-			} else {
-				return _callback(error, res);
-			}
-		};
-
-		this.db.getCandidates(this.query, (err: any, candidates: any[]) => {
-			if (err) {
-				return callback(err);
-			}
-
-			try {
-				for (let i = 0; i < candidates.length; i++) {
-					if (model.match(candidates[i], this.query)) {
-						// If a sort is defined, wait for the results to be sorted before applying limit and skip
-						if (!this._sort) {
-							if (this._skip && this._skip > skipped) {
-								skipped++;
-							} else {
-								res.push(candidates[i]);
-								added++;
-								if (this._limit && this._limit <= added) {
-									break;
-								}
-							}
-						} else {
-							res.push(candidates[i]);
+		for (let i = 0; i < candidates.length; i++) {
+			if (model.match(candidates[i], this.query)) {
+				// If a sort is defined, wait for the results to be sorted before applying limit and skip
+				if (!this._sort) {
+					if (this._skip && this._skip > skipped) {
+						skipped++;
+					} else {
+						res.push(candidates[i]);
+						added++;
+						if (this._limit && this._limit <= added) {
+							break;
 						}
 					}
+				} else {
+					res.push(candidates[i]);
 				}
-			} catch (err) {
-				return callback(err);
 			}
+		}
 
-			// Apply all sorts
-			if (this._sort) {
-				let keys = Object.keys(this._sort);
+		// Apply all sorts
+		if (this._sort) {
+			let keys = Object.keys(this._sort);
 
-				// Sorting
-				const criteria: { key: string; direction: number }[] = [];
-				for (let i = 0; i < keys.length; i++) {
-					let key = keys[i];
-					criteria.push({ key, direction: this._sort[key] });
-				}
-				res.sort((a, b) => {
-					let criterion;
-					let compare;
-					let i;
-					for (i = 0; i < criteria.length; i++) {
-						criterion = criteria[i];
-						compare =
-							criterion.direction *
-							model.compareThings(
-								model.getDotValue(a, criterion.key),
-								model.getDotValue(b, criterion.key),
-								this.db.compareStrings
-							);
-						if (compare !== 0) {
-							return compare;
-						}
+			// Sorting
+			const criteria: { key: string; direction: number }[] = [];
+			for (let i = 0; i < keys.length; i++) {
+				let key = keys[i];
+				criteria.push({ key, direction: this._sort[key] });
+			}
+			res.sort((a, b) => {
+				let criterion;
+				let compare;
+				let i;
+				for (i = 0; i < criteria.length; i++) {
+					criterion = criteria[i];
+					compare =
+						criterion.direction *
+						model.compareThings(
+							model.getDotValue(a, criterion.key),
+							model.getDotValue(b, criterion.key)
+						);
+					if (compare !== 0) {
+						return compare;
 					}
-					return 0;
-				});
+				}
+				return 0;
+			});
 
-				// Applying limit and skip
-				const limit = this._limit || res.length;
+			// Applying limit and skip
+			const limit = this._limit || res.length;
 
-				const skip = this._skip || 0;
+			const skip = this._skip || 0;
 
-				res = res.slice(skip, skip + limit);
-			}
+			res = res.slice(skip, skip + limit);
+		}
 
-			// Apply projection
-			try {
-				res = this.project(res);
-			} catch (e) {
-				res = [];
-				error = e;
-			}
+		// Apply projection
+		res = this.project(res);
 
-			return callback(error, res);
-		});
+		return res;
 	}
 
-	exec(...args: any[]) {
-		this.db.executor.push({ this: this, fn: this._exec, arguments: args });
+	private async _exec() {
+		return this.db.q.add(() => this.__exec_unsafe());
+	}
+
+	async exec() {
+		const original = await this._exec();
+		const res: G[] = [];
+		for (let index = 0; index < original.length; index++) {
+			const element = original[index];
+			res.push(model.deepCopy(original) as any);
+		}
+		return res;
 	}
 }
 

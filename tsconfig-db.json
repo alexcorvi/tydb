@@ -12,7 +12,8 @@
 		"strict": true,
 		"removeComments": false,
 		"esModuleInterop": true,
-		"allowJs": true
+		"allowJs": true,
+		"skipLibCheck": true
 	},
 	"include": ["./src/db/lib-ts/**/*"],
 	"exclude": ["node_modules"]
