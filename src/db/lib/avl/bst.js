@@ -182,7 +182,8 @@ class BST {
         // Empty tree, insert as root
         if (!this.hasOwnProperty("key")) {
             this.key = key;
-            utils.isDef(value) && this.data.push(value);
+            if (typeof value !== "undefined")
+                this.data.push(value);
             return;
         }
         // Same key as root
@@ -194,7 +195,8 @@ class BST {
                 throw err;
             }
             else {
-                utils.isDef(value) && this.data.push(value);
+                if (typeof value !== "undefined")
+                    this.data.push(value);
             }
             return;
         }
