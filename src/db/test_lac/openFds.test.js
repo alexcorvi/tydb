@@ -1,9 +1,10 @@
 var fs = require("fs"),
 	child_process = require("child_process"),
 	async = require("async"),
-	Nedb = require("../lib/datastore"),
-	db = new Nedb({ filename: "./workspace/openfds.db", autoload: true }),
-	N = 64, // Half the allowed file descriptors
+	Nedb = require("../lib/datastore").default;
+let db = new Nedb({ filename: "./workspace/openfds.db", autoload: true });
+db.loadDatabase();
+let N = 64, // Half the allowed file descriptors
 	i,
 	fds;
 
