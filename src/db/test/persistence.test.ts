@@ -15,7 +15,7 @@ should();
 use(chaiAsPromised);
 const testDb = "workspace/test.db";
 
-describe.only("Persistence", () => {
+describe("Persistence", () => {
 	let d = new Datastore({ ref: testDb });
 	beforeEach(async () => {
 		d = new Datastore({ ref: testDb });
