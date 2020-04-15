@@ -165,7 +165,6 @@ describe("Indexes", function () {
 				idx.insert(obj);
 				idx.insert(obj2);
 				idx.getMatching("aa").length.should.equal(2);
-				return;
 				idx.getMatching("aa").indexOf(obj).should.not.equal(-1);
 				idx.getMatching("aa").indexOf(obj2).should.not.equal(-1);
 				idx.getMatching("cc").length.should.equal(1);
