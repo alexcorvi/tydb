@@ -189,7 +189,7 @@ export class Operations<S> {
 
 	/**
 	 * Update many documents that meets the specified criteria
-	 * and create them when they are not found
+	 * and create the document when they are not found
 	 */
 	public async upsertMany({
 		filter,
