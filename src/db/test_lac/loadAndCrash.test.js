@@ -7,20 +7,18 @@ function rethrow() {
 	// Only enable in debug mode. A backtrace uses ~1000 bytes of heap space and
 	// is fairly slow to generate.
 	if (DEBUG) {
-		var backtrace = new Error();
-		return function (err) {
+		const backtrace = new Error();
+		return (err) => {
 			if (err) {
-				backtrace.stack =
-					err.name +
-					": " +
-					err.message +
-					backtrace.stack.substr(backtrace.name.length);
+				backtrace.stack = `${err.name}: ${
+					err.message
+				}${backtrace.stack.substr(backtrace.name.length)}`;
 				throw backtrace;
 			}
 		};
 	}
 
-	return function (err) {
+	return (err) => {
 		if (err) {
 			throw err; // Forgot a callback but don't know where? Use NODE_DEBUG=fs
 		}
@@ -37,26 +35,26 @@ function isFd(path) {
 
 function assertEncoding(encoding) {
 	if (encoding && !Buffer.isEncoding(encoding)) {
-		throw new Error("Unknown encoding: " + encoding);
+		throw new Error(`Unknown encoding: ${encoding}`);
 	}
 }
 
-var onePassDone = false;
+let onePassDone = false;
 function writeAll(fd, isUserFd, buffer, offset, length, position, callback_) {
-	var callback = maybeCallback(arguments[arguments.length - 1]);
+	const callback = maybeCallback(arguments[arguments.length - 1]);
 
 	if (onePassDone) {
 		process.exit(1);
 	} // Crash on purpose before rewrite done
-	var l = Math.min(5000, length); // Force write by chunks of 5000 bytes to ensure data will be incomplete on crash
+	const l = Math.min(5000, length); // Force write by chunks of 5000 bytes to ensure data will be incomplete on crash
 
 	// write(fd, buffer, offset, length, position, callback)
-	fs.write(fd, buffer, offset, l, position, function (writeErr, written) {
+	fs.write(fd, buffer, offset, l, position, (writeErr, written) => {
 		if (writeErr) {
 			if (isUserFd) {
 				if (callback) callback(writeErr);
 			} else {
-				fs.close(fd, function () {
+				fs.close(fd, () => {
 					if (callback) callback(writeErr);
 				});
 			}
@@ -89,7 +87,7 @@ function writeAll(fd, isUserFd, buffer, offset, length, position, callback_) {
 }
 
 fs.writeFile = function (path, data, options, callback_) {
-	var callback = maybeCallback(arguments[arguments.length - 1]);
+	const callback = maybeCallback(arguments[arguments.length - 1]);
 
 	if (!options || typeof options === "function") {
 		options = { encoding: "utf8", mode: 438, flag: "w" }; // Mode 438 == 0o666 (compatibility with older Node releases)
@@ -101,14 +99,14 @@ fs.writeFile = function (path, data, options, callback_) {
 
 	assertEncoding(options.encoding);
 
-	var flag = options.flag || "w";
+	const flag = options.flag || "w";
 
 	if (isFd(path)) {
 		writeFd(path, true);
 		return;
 	}
 
-	fs.open(path, flag, options.mode, function (openErr, fd) {
+	fs.open(path, flag, options.mode, (openErr, fd) => {
 		if (openErr) {
 			if (callback) callback(openErr);
 		} else {
@@ -117,17 +115,18 @@ fs.writeFile = function (path, data, options, callback_) {
 	});
 
 	function writeFd(fd, isUserFd) {
-		var buffer =
+		const buffer =
 			data instanceof Buffer
 				? data
-				: new Buffer.from("" + data, options.encoding || "utf8");
-		var position = /a/.test(flag) ? null : 0;
+				: new Buffer.from(`${data}`, options.encoding || "utf8");
+		const position = /a/.test(flag) ? null : 0;
 
 		writeAll(fd, isUserFd, buffer, 0, buffer.length, position, callback);
 	}
 };
 
+// TODO: look for a solution for this
 // End of fs modification
-var Nedb = require("../lib/datastore.js").default,
+var Nedb = require("../lib/datastore").default,
 	db = new Nedb({ ref: "workspace/lac.db" });
 db.loadDatabase();
