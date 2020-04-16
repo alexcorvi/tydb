@@ -310,20 +310,20 @@ describe("Persistence", () => {
 
 		// Default corruptAlertThreshold
 		let d = new Datastore({ ref: corruptTestFilename });
-		expect(d.loadDatabase()).to.be.rejectedWith(Error);
+		await expect(d.loadDatabase()).to.be.rejectedWith(Error);
 		fs.writeFileSync(corruptTestFilename, fakeData, "utf8");
 		d = new Datastore({
 			ref: corruptTestFilename,
 			corruptAlertThreshold: 1,
 		});
-		expect(d.loadDatabase()).not.to.be.rejectedWith(Error);
+		await expect(d.loadDatabase()).not.to.be.rejectedWith(Error);
 
 		fs.writeFileSync(corruptTestFilename, fakeData, "utf8");
 		d = new Datastore({
 			ref: corruptTestFilename,
 			corruptAlertThreshold: 0,
 		});
-		expect(d.loadDatabase()).to.be.rejectedWith(Error);
+		await expect(d.loadDatabase()).to.be.rejectedWith(Error);
 	});
 
 	describe("Serialization hooks", () => {
