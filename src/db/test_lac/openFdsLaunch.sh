@@ -1,2 +1,2 @@
 ulimit -n 128
-node src/db/test_lac/openFds.test.js
+node_modules/.bin/ts-node src/db/test_lac/openFds.test.ts
