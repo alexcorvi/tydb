@@ -1,3 +1,4 @@
+import { FS_Persistence_Adapter } from "../../src/fs-adapter";
 import { Datastore, model } from "@core";
 import { assert, expect, should, use } from "chai";
 import * as asPromised from "chai-as-promised";
@@ -152,10 +153,16 @@ describe("Model", () => {
 				fs.unlinkSync("workspace/test1.db");
 			}
 			fs.existsSync("workspace/test1.db").should.equal(false);
-			let db1 = new Datastore({ ref: "workspace/test1.db" });
+			let db1 = new Datastore({
+				ref: "workspace/test1.db",
+				persistence_adapter: FS_Persistence_Adapter,
+			});
 			await db1.loadDatabase();
 			await db1.insert({ hello: badString });
-			let db2 = new Datastore({ ref: "workspace/test1.db" });
+			let db2 = new Datastore({
+				ref: "workspace/test1.db",
+				persistence_adapter: FS_Persistence_Adapter,
+			});
 			await db2.loadDatabase();
 			let docs = await db2.find({});
 			docs.length.should.equal(1);
