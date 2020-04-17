@@ -2883,7 +2883,7 @@ describe("Database", () => {
 											ref: persDb,
 											persistence_adapter: FS_Persistence_Adapter,
 										});
-										db.loadDatabase().then(function (err) {
+										db.loadDatabase().then(function () {
 											Object.keys(
 												db.indexes
 											).length.should.equal(2);
