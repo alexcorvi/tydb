@@ -1,19 +1,7 @@
-import { assert, expect, should, use } from "chai";
+import { customUtils } from "@core";
+import { should, use } from "chai";
 import * as asPromised from "chai-as-promised";
-import * as fs from "fs";
-import * as path from "path";
 import * as _ from "underscore";
-import { promisify } from "util";
-import {
-	Datastore,
-	Cursor,
-	Index,
-	Persistence,
-	customUtils,
-	BST,
-	storage,
-	AVLTree,
-} from "@core";
 use(asPromised);
 should();
 
