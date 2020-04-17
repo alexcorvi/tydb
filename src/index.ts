@@ -18,9 +18,7 @@ export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 				ref: options,
 			};
 		}
-		const db = new Datastore<Schema>(
-			Object.assign(options, { timestampData: true })
-		);
+		const db = new Datastore<Schema>(options);
 		super(db);
 		this._database = db;
 		this.name = options.ref;
