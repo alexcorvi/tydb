@@ -950,7 +950,7 @@ describe("Persistence", () => {
 			}
 			child_process.execFile(
 				"test/core/test_lac/openFdsLaunch.sh",
-				(err, stdout, stderr) => {
+				(err, stdout) => {
 					if (err) {
 						return done(err);
 					}
