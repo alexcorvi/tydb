@@ -1,4 +1,5 @@
-import { Cursor, Datastore, storage } from "@core";
+import { FS_Persistence_Adapter, storage } from "../../src/fs-adapter";
+import { Cursor, Datastore } from "@core";
 import { assert, expect, should, use } from "chai";
 import * as asPromised from "chai-as-promised";
 import * as fs from "fs";
@@ -11,9 +12,15 @@ should();
 const testDb = "workspace/test.db";
 
 describe("Cursor", () => {
-	let d = new Datastore<any>({ ref: testDb });
+	let d = new Datastore<any>({
+		ref: testDb,
+		persistence_adapter: FS_Persistence_Adapter,
+	});
 	beforeEach(async () => {
-		d = new Datastore({ ref: testDb });
+		d = new Datastore({
+			ref: testDb,
+			persistence_adapter: FS_Persistence_Adapter,
+		});
 		d.ref.should.equal(testDb);
 		await storage.mkdirp(path.dirname(testDb));
 		if (await storage.exists(testDb)) {
