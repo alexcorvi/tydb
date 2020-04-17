@@ -63,25 +63,24 @@ describe("Persistence", () => {
 
 	it("Badly formatted lines have no impact on the treated data", () => {
 		const now = new Date();
-
-		const rawData = `${model.serialize({
+		const obj1 = {
 			_id: "1",
 			a: 2,
 			ages: [1, 5, 12],
-		})}\ngarbage\n${model.serialize({ _id: "3", nested: { today: now } })}`;
-
+		};
+		const obj2 = {
+			_id: "3",
+			nested: { today: now },
+		};
+		d.persistence.corruptAlertThreshold = 0.34;
+		const rawData = `${model.serialize(obj1)}\ngarbage\n${model.serialize(
+			obj2
+		)}`;
 		const treatedData = d.persistence.treatRawData(rawData).data;
 		treatedData.sort(({ _id: _id1 }, { _id: _id2 }) => _id1 - _id2);
 		treatedData.length.should.equal(2);
-		_.isEqual(treatedData[0], {
-			_id: "1",
-			a: 2,
-			ages: [1, 5, 12],
-		}).should.equal(true);
-		_.isEqual(treatedData[1], {
-			_id: "3",
-			nested: { today: now },
-		}).should.equal(true);
+		_.isEqual(treatedData[0], obj1).should.equal(true);
+		_.isEqual(treatedData[1], obj2).should.equal(true);
 	});
 
 	it("Well formatted lines that have no _id are not included in the data", () => {
