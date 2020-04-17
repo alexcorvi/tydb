@@ -125,7 +125,6 @@ fs.writeFile = function (path, data, options, callback_) {
 	}
 };
 
-// TODO: look for a solution for this
 // End of fs modification
 var Nedb = require("../../../dist/core/datastore").Datastore,
 	db = new Nedb({ ref: "workspace/lac.db" });
