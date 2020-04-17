@@ -2,7 +2,7 @@ import * as customUtils from "./customUtils";
 import { Datastore } from "./datastore";
 import { Index } from "./indexes";
 import * as model from "./model";
-import { BaseSchema } from "../types/base-schema";
+import { BaseSchema } from "@types";
 
 interface PersistenceOptions<G extends Partial<BaseSchema>> {
 	db: Datastore<G>;
