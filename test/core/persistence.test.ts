@@ -1,3 +1,5 @@
+import { FS_Persistence_Adapter, storage } from "../../src/fs-adapter";
+import { Datastore, model, Persistence } from "@core";
 import { assert, expect, should, use } from "chai";
 import * as asPromised from "chai-as-promised";
 import * as child_process from "child_process";
@@ -5,26 +7,22 @@ import * as fs from "fs";
 import * as path from "path";
 import * as _ from "underscore";
 import { promisify } from "util";
-import {
-	Datastore,
-	Cursor,
-	Index,
-	Persistence,
-	customUtils,
-	BST,
-	storage,
-	AVLTree,
-	model,
-} from "@core";
+
 use(asPromised);
 should();
 
 const testDb = "workspace/test.db";
 
 describe("Persistence", () => {
-	let d = new Datastore({ ref: testDb });
+	let d = new Datastore({
+		ref: testDb,
+		persistence_adapter: FS_Persistence_Adapter,
+	});
 	beforeEach(async () => {
-		d = new Datastore({ ref: testDb });
+		d = new Datastore({
+			ref: testDb,
+			persistence_adapter: FS_Persistence_Adapter,
+		});
 		d.ref.should.equal(testDb);
 		await storage.mkdirp(path.dirname(testDb));
 		if (await storage.exists(testDb)) {
@@ -315,12 +313,16 @@ describe("Persistence", () => {
 		fs.writeFileSync(corruptTestFilename, fakeData, "utf8");
 
 		// Default corruptAlertThreshold
-		let d = new Datastore({ ref: corruptTestFilename });
+		let d = new Datastore({
+			ref: corruptTestFilename,
+			persistence_adapter: FS_Persistence_Adapter,
+		});
 		await expect(d.loadDatabase()).to.be.rejectedWith(Error);
 		fs.writeFileSync(corruptTestFilename, fakeData, "utf8");
 		d = new Datastore({
 			ref: corruptTestFilename,
 			corruptAlertThreshold: 1,
+			persistence_adapter: FS_Persistence_Adapter,
 		});
 		await expect(d.loadDatabase()).not.to.be.rejectedWith(Error);
 
@@ -328,6 +330,7 @@ describe("Persistence", () => {
 		d = new Datastore({
 			ref: corruptTestFilename,
 			corruptAlertThreshold: 0,
+			persistence_adapter: FS_Persistence_Adapter,
 		});
 		await expect(d.loadDatabase()).to.be.rejectedWith(Error);
 	});
@@ -345,6 +348,7 @@ describe("Persistence", () => {
 				new Datastore({
 					ref: hookTestFilename,
 					afterSerialization: as,
+					persistence_adapter: FS_Persistence_Adapter,
 				});
 			}).should.throw();
 
@@ -357,6 +361,7 @@ describe("Persistence", () => {
 				new Datastore({
 					ref: hookTestFilename,
 					beforeDeserialization: bd,
+					persistence_adapter: FS_Persistence_Adapter,
 				});
 			}).should.throw();
 
@@ -375,6 +380,7 @@ describe("Persistence", () => {
 				new Datastore({
 					ref: hookTestFilename,
 					afterSerialization: as,
+					persistence_adapter: FS_Persistence_Adapter,
 					beforeDeserialization(s) {
 						return s;
 					},
@@ -394,6 +400,7 @@ describe("Persistence", () => {
 				ref: hookTestFilename,
 				afterSerialization: as,
 				beforeDeserialization: bd,
+				persistence_adapter: FS_Persistence_Adapter,
 			});
 			await d.loadDatabase();
 
@@ -470,6 +477,7 @@ describe("Persistence", () => {
 				ref: hookTestFilename,
 				afterSerialization: as,
 				beforeDeserialization: bd,
+				persistence_adapter: FS_Persistence_Adapter,
 			});
 			await d.loadDatabase();
 			await d.insert({ hello: "world" });
@@ -533,6 +541,7 @@ describe("Persistence", () => {
 				ref: hookTestFilename,
 				afterSerialization: as,
 				beforeDeserialization: bd,
+				persistence_adapter: FS_Persistence_Adapter,
 			});
 			await d.loadDatabase();
 			const doc = (await d.insert({ hello: "world" })).docs[0];
@@ -555,6 +564,7 @@ describe("Persistence", () => {
 					ref: hookTestFilename,
 					afterSerialization: as,
 					beforeDeserialization: bd,
+					persistence_adapter: FS_Persistence_Adapter,
 				});
 				await d.loadDatabase();
 				const docs = await d.find({});
@@ -571,13 +581,19 @@ describe("Persistence", () => {
 	describe("Prevent dataloss when persisting data", () => {
 		it("Creating a persistent datastore with a bad filename will cause an error", () => {
 			(() => {
-				new Datastore({ ref: "workspace/bad.db~" });
+				new Datastore({
+					ref: "workspace/bad.db~",
+					persistence_adapter: FS_Persistence_Adapter,
+				});
 			}).should.throw();
 		});
 
 		it("If no file exists, ensureDataFileIntegrity creates an empty datafile", async () => {
 			const p = new Persistence({
-				db: new Datastore({ ref: "workspace/it.db" }),
+				db: new Datastore({
+					ref: "workspace/it.db",
+					persistence_adapter: FS_Persistence_Adapter,
+				}),
 			});
 			if (fs.existsSync("workspace/it.db")) {
 				fs.unlinkSync("workspace/it.db");
@@ -595,7 +611,10 @@ describe("Persistence", () => {
 
 		it("If only datafile exists, ensureDataFileIntegrity will use it", async () => {
 			const p = new Persistence({
-				db: new Datastore({ ref: "workspace/it.db" }),
+				db: new Datastore({
+					ref: "workspace/it.db",
+					persistence_adapter: FS_Persistence_Adapter,
+				}),
 			});
 			if (fs.existsSync("workspace/it.db")) {
 				fs.unlinkSync("workspace/it.db");
@@ -616,7 +635,10 @@ describe("Persistence", () => {
 
 		it("If temp datafile exists and datafile doesnt, ensureDataFileIntegrity will use it (cannot happen except upon first use)", async () => {
 			const p = new Persistence({
-				db: new Datastore({ ref: "workspace/it.db" }),
+				db: new Datastore({
+					ref: "workspace/it.db",
+					persistence_adapter: FS_Persistence_Adapter,
+				}),
 			});
 
 			if (fs.existsSync("workspace/it.db")) {
@@ -642,7 +664,10 @@ describe("Persistence", () => {
 
 		// Technically it could also mean the write was successful but the rename wasn't, but there is in any case no guarantee that the data in the temp file is whole so we have to discard the whole file
 		it("If both temp and current datafiles exist, ensureDataFileIntegrity will use the datafile, as it means that the write of the temp file failed", async () => {
-			const theDb = new Datastore({ ref: "workspace/it.db" });
+			const theDb = new Datastore({
+				ref: "workspace/it.db",
+				persistence_adapter: FS_Persistence_Adapter,
+			});
 
 			if (fs.existsSync("workspace/it.db")) {
 				fs.unlinkSync("workspace/it.db");
@@ -774,7 +799,10 @@ describe("Persistence", () => {
 				fs.unlinkSync(`${dbFile}~`);
 			}
 
-			theDb = new Datastore({ ref: dbFile });
+			theDb = new Datastore({
+				ref: dbFile,
+				persistence_adapter: FS_Persistence_Adapter,
+			});
 
 			await theDb.loadDatabase();
 			const contents = fs.readFileSync(dbFile, "utf8");
@@ -790,7 +818,10 @@ describe("Persistence", () => {
 			let theDb2;
 			await storage.ensureFileDoesntExist(dbFile);
 			await storage.ensureFileDoesntExist(`${dbFile}~`);
-			const theDb = new Datastore({ ref: dbFile });
+			const theDb = new Datastore({
+				ref: dbFile,
+				persistence_adapter: FS_Persistence_Adapter,
+			});
 			await theDb.loadDatabase();
 			const length = (await theDb.find({})).length;
 			length.should.equal(0);
@@ -822,7 +853,10 @@ describe("Persistence", () => {
 			}
 			{
 				const docs = await theDb.find({});
-				theDb2 = new Datastore({ ref: dbFile });
+				theDb2 = new Datastore({
+					ref: dbFile,
+					persistence_adapter: FS_Persistence_Adapter,
+				});
 				await theDb2.loadDatabase();
 				// no change
 				docs.length.should.equal(2);
@@ -882,7 +916,10 @@ describe("Persistence", () => {
 					).length.should.equal(5000);
 
 					// Reload database without a crash, check that no data was lost and fs state is clean (no temp file)
-					const db = new Datastore({ ref: "workspace/lac.db" });
+					const db = new Datastore({
+						ref: "workspace/lac.db",
+						persistence_adapter: FS_Persistence_Adapter,
+					});
 					await db.loadDatabase();
 
 					fs.existsSync("workspace/lac.db").should.equal(true);
