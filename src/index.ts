@@ -1,27 +1,29 @@
 import * as compress from "./compress";
-import { _NEDB, ConnectionOptions } from "./db";
 import { Operations } from "./operations";
+import { Datastore, DataStoreOptions } from "@core";
+import { BaseSchema } from "@types";
 import * as path from "path";
 
-export class Database<Schema> extends Operations<Schema> {
-	private _database: _NEDB;
+export class Database<Schema extends BaseSchema> extends Operations<Schema> {
+	private _database: Datastore<Schema>;
 
 	name: string;
 	filePath: string;
 
 	constructor(
-		options: string | (ConnectionOptions & { autoCompaction?: number })
+		options: string | (DataStoreOptions & { autoCompaction?: number })
 	) {
 		if (typeof options === "string") {
 			options = {
-				filename: options,
-				timestampData: true,
+				ref: options,
 			};
 		}
-		const nedb = new _NEDB(Object.assign(options, { timestampData: true }));
-		super(nedb, options.filename);
-		this._database = nedb;
-		this.name = options.filename;
+		const db = new Datastore<Schema>(
+			Object.assign(options, { timestampData: true })
+		);
+		super(db);
+		this._database = db;
+		this.name = options.ref;
 		this.filePath = path.resolve(this.name);
 		if (options.autoCompaction === undefined) options.autoCompaction = 0;
 		if (options.autoCompaction > 0) {

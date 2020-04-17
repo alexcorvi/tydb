@@ -1,4 +1,5 @@
 {
-	"extension": ["js"],
-	"spec": "src/db/test/**/*.test.js"
+	"extension": ["ts"],
+	"spec": "./test/**/*.test.ts",
+	"require": ["ts-node/register", "tsconfig-paths/register"]
 }

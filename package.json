@@ -7,9 +7,7 @@
 		"test": "test"
 	},
 	"scripts": {
-		"test": "ts-node ./test/test",
-		"testnedb": "mocha --config .mocharc.json",
-		"testffdb": "mocha --config .mocharc.ts.json"
+		"test": "mocha --config .mocharc.json"
 	},
 	"keywords": [
 		"mongodb",
@@ -20,30 +18,21 @@
 	"author": "Alex Corvi",
 	"license": "MIT",
 	"dependencies": {
-		"@types/rimraf": "^3.0.0",
-		"async": "0.2.10",
-		"binary-search-tree": "0.2.5",
-		"mkdirp": "^1.0.4",
-		"p-queue": "^6.3.0",
-		"underscore": "~1.4.4"
+		"p-queue": "^6.3.0"
 	},
 	"types": "./dist/index.d.ts",
 	"devDependencies": {
-		"@types/async": "^3.2.0",
 		"@types/chai": "^4.2.11",
 		"@types/chai-as-promised": "^7.1.2",
-		"@types/expect": "^24.3.0",
-		"@types/mkdirp": "^1.0.0",
 		"@types/mocha": "^7.0.2",
-		"@types/nedb": "^1.8.9",
 		"@types/node": "^13.11.0",
 		"@types/underscore": "^1.9.4",
 		"chai": "^4.2.0",
 		"chai-as-promised": "^7.1.1",
-		"expect": "^25.3.0",
 		"mocha": "^7.1.1",
-		"rimraf": "^3.0.2",
 		"ts-node": "^8.8.2",
-		"typescript": "^3.8.3"
+		"tsconfig-paths": "^3.9.0",
+		"typescript": "^3.8.3",
+		"underscore": "^1.10.2"
 	}
 }

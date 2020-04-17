@@ -1,74 +1,42 @@
-import { _NEDB } from "./db";
-import { FullSchema, InputSchema } from "./interfaces/base-schema";
-import { SchemaKeyProjection, SchemaKeySort } from "./interfaces/filter";
-import { unlink } from "fs";
-import * as path from "path";
-import * as util from "util";
-import { promisify } from "util";
+import { Datastore } from "@core";
 import {
-	UpdateOperators,
+	BaseSchema,
 	Filter,
+	SchemaKeyProjection,
+	SchemaKeySort,
+	UpdateOperators,
 	FieldLevelQueryOperators,
-	OperatedMany,
-	OperatedOne,
-} from "./interfaces";
+} from "@types";
 
-export class Operations<S> {
-	private _nedbBase: _NEDB<InputSchema<S>>;
-	private _dbName: string;
+export class Operations<S extends BaseSchema> {
+	private _datastore: Datastore<S>;
 
-	constructor(_nedb: _NEDB<InputSchema<S>>, name: string) {
-		this._nedbBase = _nedb;
-		this._dbName = name;
+	constructor(_datastore: Datastore<S>) {
+		this._datastore = _datastore;
 	}
 
-	private _connect() {
-		return new Promise<_NEDB<InputSchema<S>>>((resolve, reject) => {
-			this._nedbBase.loadDatabase((e) => {
-				if (e) {
-					throw e;
-				}
-				resolve(this._nedbBase);
-			});
-		});
+	private async _connect() {
+		await this._datastore.loadDatabase();
+		return this._datastore;
 	}
 
 	/**
 	 * Put one document
 	 */
-	public async createOne({
-		doc,
-	}: {
-		doc: InputSchema<S>;
-	}): Promise<OperatedOne<FullSchema<S>> & { affected: FullSchema<S> }> {
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).insert([doc], (err, res) => {
-				if (err) return reject(err);
-				resolve({
-					n: res.length,
-					affected: res[0] as FullSchema<S>,
-				});
-			});
-		});
+	public async insert(docs: S[]): Promise<{ docs: S[]; number: number }> {
+		return (await this._connect()).insert(docs);
 	}
 
 	/**
 	 * Put one document
 	 */
-	public async createMany({
-		docs,
-	}: {
-		docs: InputSchema<S>[];
-	}): Promise<OperatedMany<FullSchema<S>>> {
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).insert(docs, (err, res) => {
-				if (err) return reject(err);
-				resolve({
-					n: res.length,
-					affected: res as FullSchema<S>[],
-				});
-			});
-		});
+	create = this.insert;
+
+	/**
+	 * Database cursor
+	 */
+	public async cursor(filter: Filter<S>) {
+		return (await this._connect()).cursor(filter);
 	}
 
 	/**
@@ -81,14 +49,14 @@ export class Operations<S> {
 		project,
 		sort = undefined,
 	}: {
-		filter?: Filter<FullSchema<S>>;
+		filter?: Filter<S>;
 		skip?: number;
 		limit?: number;
-		sort?: SchemaKeySort<FullSchema<S>>;
-		project?: SchemaKeyProjection<FullSchema<S>>;
-	}): Promise<FullSchema<S>[]> {
+		sort?: SchemaKeySort<S>;
+		project?: SchemaKeyProjection<S>;
+	}): Promise<S[]> {
 		filter = fixDeep(filter || {});
-		const cursor = (await this._connect()).find<FullSchema<S>>(filter);
+		const cursor = (await this._connect()).cursor(filter);
 		if (sort) {
 			cursor.sort(sort);
 		}
@@ -101,163 +69,54 @@ export class Operations<S> {
 		if (project) {
 			cursor.projection(project);
 		}
-		return new Promise((resolve, reject) => {
-			cursor.exec((err, res) => {
-				if (err) return reject(err);
-				resolve(res);
-			});
-		});
+		return cursor.exec();
 	}
+
+	/**
+	 * Find documents that meets a specified criteria
+	 */
+	find = this.read;
 
 	/**
 	 * Update many documents that meets the specified criteria
 	 */
-	public async updateMany({
+	public async update({
 		filter,
 		update,
+		multi,
 	}: {
-		filter: Filter<FullSchema<S>>;
-		update: UpdateOperators<FullSchema<S>>;
-	}): Promise<OperatedMany<FullSchema<S>>> {
+		filter: Filter<S>;
+		update: UpdateOperators<S>;
+		multi?: boolean;
+	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
 		if (update.$set) {
 			update.$set = fixDeep(update.$set);
 		}
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).update<FullSchema<S>>(
-				filter,
-				update,
-				{
-					multi: true,
-					upsert: false,
-					returnUpdatedDocs: true,
-				},
-				(err, n, affected) => {
-					if (err) return reject(err);
-					resolve({
-						n,
-						affected: util.isArray(affected)
-							? affected
-							: affected
-							? [affected]
-							: [],
-					});
-				}
-			);
+		return await (await this._connect()).update(filter, update, {
+			multi,
+			upsert: false,
 		});
 	}
 
 	/**
-	 * Update one document that meets the specified criteria
+	 * Update documents that meets the specified criteria,
+	 * and insert the update query if no documents are matched
 	 */
-	public async updateOne({
+	public async upsert({
 		filter,
 		update,
+		multi,
 	}: {
-		filter: Filter<FullSchema<S>>;
-		update: UpdateOperators<FullSchema<S>>;
-	}): Promise<OperatedOne<FullSchema<S>>> {
+		filter: Filter<S>;
+		update: S;
+		multi?: boolean;
+	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
-		update = fix$Pull$eq(update);
-		if (update.$set) {
-			update.$set = fixDeep(update.$set);
-		}
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).update<FullSchema<S>>(
-				filter,
-				update,
-				{
-					multi: false,
-					upsert: false,
-					returnUpdatedDocs: true,
-				},
-				(err, n, affected) => {
-					if (err) return reject(err);
-					resolve({
-						n,
-						affected: util.isArray(affected)
-							? affected[0]
-							: affected
-							? affected
-							: null,
-					});
-				}
-			);
-		});
-	}
-
-	/**
-	 * Update many documents that meets the specified criteria
-	 * and create the document when they are not found
-	 */
-	public async upsertMany({
-		filter,
-		doc,
-	}: {
-		filter: Filter<FullSchema<S>>;
-		doc: S;
-	}): Promise<OperatedMany<FullSchema<S>> & { upsert: boolean }> {
-		filter = fixDeep(filter || {});
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).update<FullSchema<S>>(
-				filter,
-				doc,
-				{
-					multi: true,
-					upsert: true,
-					returnUpdatedDocs: true,
-				},
-				(err, n, affected, upsert) => {
-					if (err) return reject(err);
-					resolve({
-						n,
-						affected: util.isArray(affected)
-							? affected
-							: affected
-							? [affected]
-							: [],
-						upsert: !!upsert,
-					});
-				}
-			);
-		});
-	}
-
-	/**
-	 * Update one document that meets the specified criteria
-	 * and create them when they are not found
-	 */
-	public async upsertOne({
-		filter,
-		doc,
-	}: {
-		filter: Filter<FullSchema<S>>;
-		doc: S;
-	}): Promise<OperatedOne<FullSchema<S>> & { upsert: boolean }> {
-		filter = fixDeep(filter || {});
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).update<FullSchema<S>>(
-				filter,
-				doc,
-				{
-					multi: false,
-					upsert: true,
-					returnUpdatedDocs: true,
-				},
-				(err, n, affected, upsert) => {
-					if (err) return reject(err);
-					resolve({
-						n,
-						affected: util.isArray(affected)
-							? affected[0]
-							: affected
-							? affected
-							: null,
-						upsert: !!upsert,
-					});
-				}
-			);
+		return await (await this._connect()).update(filter, update, {
+			multi,
+			upsert: true,
 		});
 	}
 
@@ -265,55 +124,15 @@ export class Operations<S> {
 	 * Delete many documents that meets the specified criteria
 	 *
 	 */
-	public async deleteMany({
+	public async delete({
 		filter,
+		multi,
 	}: {
-		filter: Filter<FullSchema<S>>;
-	}): Promise<OperatedMany<FullSchema<S>>> {
+		filter: Filter<S>;
+		multi: boolean;
+	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
-		const doc = await this.find({ filter });
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).remove(
-				filter,
-				{
-					multi: true,
-				},
-				(err, num) => {
-					if (err) return reject(err);
-					resolve({
-						n: num,
-						affected: doc,
-					});
-				}
-			);
-		});
-	}
-
-	/**
-	 * Delete one document that meets the specified criteria
-	 */
-	public async deleteOne({
-		filter,
-	}: {
-		filter: Filter<FullSchema<S>>;
-	}): Promise<OperatedOne<FullSchema<S>>> {
-		filter = fixDeep(filter || {});
-		const doc = await this.find({ filter });
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).remove(
-				filter,
-				{
-					multi: false,
-				},
-				(err, num) => {
-					if (err) return reject(err);
-					resolve({
-						n: num,
-						affected: doc[0] || null,
-					});
-				}
-			);
-		});
+		return (await this._connect()).remove(filter, { multi });
 	}
 
 	/**
@@ -322,51 +141,14 @@ export class Operations<S> {
 	public async count({
 		filter,
 	}: {
-		filter?: Filter<FullSchema<S>>;
+		filter?: Filter<S>;
 	} = {}): Promise<number> {
 		filter = fixDeep(filter || {});
-		return new Promise(async (resolve, reject) => {
-			(await this._connect()).count(filter || {}, (err, res) => {
-				if (err) return reject(err);
-				resolve(res);
-			});
-		});
+		return await (await this._connect()).count(filter);
 	}
-
-	public async drop({
-		dbName,
-	}: {
-		dbName: string;
-	}): Promise<{ n: number; affected: never[] }> {
-		if (this._dbName !== dbName) {
-			throw new Error("Supplied name of the database is not correct");
-		}
-		const n = await this.count();
-		await this.deleteMany({ filter: {} });
-		await promisify(unlink)(path.resolve(dbName));
-		return {
-			n,
-			affected: [],
-		};
-	}
-
-	/**
-	 * Aliases
-	 *
-	 */
-	query(filter: Filter<FullSchema<S>>) {
-		return this.read({ filter });
-	}
-
-	find = this.read;
-	insert = this.createOne;
-	insertOne = this.createOne;
-	insertMany = this.createMany;
-	removeOne = this.deleteOne;
-	removeMany = this.deleteMany;
 }
 
-function fixDeep<T extends { $deep?: any }>(input: T): T {
+function fixDeep<T extends Filter<any>>(input: T): T {
 	const result = Object.assign<T, Filter<any>>(input, input.$deep);
 	delete result.$deep;
 	return result;
