@@ -149,8 +149,13 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 		const dataById: { [key: string]: any } = {};
 		const tData: any[] = [];
 		const indexes: { [key: string]: any } = {};
-		let corruptItems = -1;
-		for (let i = 0; i < data.length; i += 1) {
+		let corruptItems = 0;
+		for (let i = 0; i < data.length; i++) {
+			if (data[i].length === 0 && i === data.length - 1) {
+				// last line is always empty
+				// can be falsely flagged as corrupt
+				continue;
+			}
 			try {
 				let doc = model.deserialize(
 					this.beforeDeserialization(data[i])
@@ -170,7 +175,7 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 					delete indexes[doc.$$indexRemoved];
 				}
 			} catch (e) {
-				corruptItems += 1;
+				corruptItems++;
 			}
 		}
 
