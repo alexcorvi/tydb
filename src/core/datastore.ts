@@ -33,6 +33,9 @@ export interface DataStoreOptions {
 	// (optional, defaults to false)
 	// timestamp the insertion and last update of all documents, with the fields createdAt and updatedAt. User-specified values override automatic generation, usually useful for testing.
 	timestampData?: boolean;
+	// (optional, defaults to memory only)
+	// a persistence adapter that extends the Persistence class
+	persistence_adapter?: typeof Persistence;
 }
 
 interface UpdateOptions {
@@ -43,7 +46,7 @@ interface UpdateOptions {
 export class Datastore<
 	G extends Partial<types.BaseSchema> & { [key: string]: any }
 > {
-	ref: string = "";
+	ref: string = "db";
 	timestampData = false;
 
 	persistence: Persistence<G>;
@@ -64,8 +67,10 @@ export class Datastore<
 			this.ref = options.ref;
 		}
 
+		const PersistenceAdapter = options.persistence_adapter || Persistence;
+
 		// Persistence handling
-		this.persistence = new Persistence({
+		this.persistence = new PersistenceAdapter({
 			db: this,
 			afterSerialization: options.afterSerialization,
 			beforeDeserialization: options.beforeDeserialization,

@@ -2,9 +2,7 @@ import * as customUtils from "./customUtils";
 import { Datastore } from "./datastore";
 import { Index } from "./indexes";
 import * as model from "./model";
-import { storage } from "./storage";
 import { BaseSchema } from "../types/base-schema";
-import * as path from "path";
 
 interface PersistenceOptions<G extends Partial<BaseSchema>> {
 	db: Datastore<G>;
@@ -16,7 +14,7 @@ interface PersistenceOptions<G extends Partial<BaseSchema>> {
 /**
  * Create a new Persistence object for database options.db
  */
-export class Persistence<G extends Partial<BaseSchema>> {
+export class Persistence<G extends Partial<BaseSchema> = any> {
 	db: Datastore<G>;
 
 	ref: string = "";
@@ -27,6 +25,8 @@ export class Persistence<G extends Partial<BaseSchema>> {
 	beforeDeserialization = (s: string) => s;
 
 	autocompactionIntervalId: NodeJS.Timeout | undefined;
+
+	private memory: { [key: string]: string } = {};
 
 	constructor(options: PersistenceOptions<G>) {
 		this.db = options.db;
@@ -57,19 +57,16 @@ export class Persistence<G extends Partial<BaseSchema>> {
 			options.afterSerialization || this.afterSerialization;
 		this.beforeDeserialization =
 			options.beforeDeserialization || this.beforeDeserialization;
-		for (let i = 1; i < 30; i += 1) {
-			for (let j = 0; j < 10; j += 1) {
-				let randomString = customUtils.randomString(i);
-				if (
-					this.beforeDeserialization(
-						this.afterSerialization(randomString)
-					) !== randomString
-				) {
-					throw new Error(
-						"beforeDeserialization is not the reverse of afterSerialization, cautiously refusing to start data store to prevent dataloss"
-					);
-				}
-			}
+
+		let randomString = customUtils.randomString(113);
+		if (
+			this.beforeDeserialization(
+				this.afterSerialization(randomString)
+			) !== randomString
+		) {
+			throw new Error(
+				"beforeDeserialization is not the reverse of afterSerialization, cautiously refusing to start data store to prevent dataloss"
+			);
 		}
 	}
 
@@ -85,7 +82,7 @@ export class Persistence<G extends Partial<BaseSchema>> {
 		});
 		Object.keys(this.db.indexes).forEach((fieldName) => {
 			if (fieldName != "_id") {
-				// The special _id index is managed by datastore.js, the others need to be persisted
+				// The special _id index is managed by datastore.ts, the others need to be persisted
 				toPersist += `${this.afterSerialization(
 					model.serialize({
 						$$indexCreated: {
@@ -97,7 +94,7 @@ export class Persistence<G extends Partial<BaseSchema>> {
 				)}\n`;
 			}
 		});
-		await storage.crashSafeWriteFile(this.ref, toPersist);
+		await this.write(toPersist);
 	}
 
 	/**
@@ -140,7 +137,7 @@ export class Persistence<G extends Partial<BaseSchema>> {
 		if (toPersist.length === 0) {
 			return;
 		}
-		await storage.appendFile(this.ref, toPersist, "utf8");
+		await this.append(toPersist);
 	}
 
 	/**
@@ -208,9 +205,7 @@ export class Persistence<G extends Partial<BaseSchema>> {
 	async loadDatabase() {
 		this.db.q.pause();
 		this.db.resetIndexes();
-		await storage.mkdirp(path.dirname(this.ref));
-		await storage.ensureDataFileIntegrity(this.ref);
-		const rawData = await storage.readFile(this.ref, "utf8");
+		let rawData = await this.read();
 		let treatedData = this.treatRawData(rawData);
 		// Recreate all indexes in the datafile
 		Object.keys(treatedData.indexes).forEach((key) => {
@@ -227,5 +222,21 @@ export class Persistence<G extends Partial<BaseSchema>> {
 		await this.db.persistence.persistCachedDatabase();
 		this.db.q.start();
 		return;
+	}
+
+	async init() {
+		this.memory[this.ref] = "";
+	}
+
+	async read() {
+		return this.memory[this.ref] || "";
+	}
+
+	async write(data: string) {
+		this.memory[this.ref] = data || "";
+	}
+
+	async append(data: string) {
+		this.memory[this.ref] = (this.memory[this.ref] || "") + (data || "");
 	}
 }

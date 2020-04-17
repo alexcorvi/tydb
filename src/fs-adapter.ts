@@ -1,3 +1,4 @@
+import { Persistence } from "./core/persistence";
 import {
 	appendFile,
 	exists,
@@ -173,3 +174,24 @@ Object.keys(_storage).forEach((key) => {
 });
 
 export { storage };
+
+export class FS_Persistence_Adapter extends Persistence {
+	async init() {
+		// TODO: watcher for files
+		// TODO: implement locking mechanism
+	}
+
+	async read() {
+		await storage.mkdirp(path.dirname(this.ref));
+		await storage.ensureDataFileIntegrity(this.ref);
+		return await storage.readFile(this.ref, "utf8");
+	}
+
+	async write(data: string) {
+		await storage.crashSafeWriteFile(this.ref, data);
+	}
+
+	async append(data: string) {
+		await storage.appendFile(this.ref, data, "utf8");
+	}
+}
