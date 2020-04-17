@@ -8,6 +8,7 @@ import {
 	writeFile
 	} from "fs";
 import * as fs from "fs";
+import { lock, unlock } from "lockfile";
 import Q from "p-queue";
 import * as path from "path";
 import { promisify } from "util";
@@ -24,6 +25,23 @@ const sq = new Q({
 });
 
 const _storage = {
+	lock: function (filename: string) {
+		return new Promise((resolve) => {
+			lock(filename, { retries: 5, retryWait: 1 }, function (err) {
+				if (err) {
+					_storage.lock(filename).then(() => {
+						resolve(true);
+					});
+				}
+				resolve(true);
+			});
+		});
+	},
+	unlock: function (filename: string) {
+		return new Promise((resolve) => {
+			unlock(filename, () => resolve());
+		});
+	},
 	appendFile: promisify(appendFile),
 	exists: promisify(exists),
 	readFile: promisify(readFile),
@@ -125,8 +143,9 @@ const _storage = {
 	 */
 
 	crashSafeWriteFile: async function (filename: string, data: string) {
-		var tempFilename = filename + "~";
-
+		const tempFilename = filename + "~";
+		const lockFilename = filename + ".lock";
+		await _storage.lock(lockFilename);
 		await _storage.flushToStorage({
 			isDir: true,
 			filename: path.dirname(filename),
@@ -141,6 +160,7 @@ const _storage = {
 			isDir: true,
 			filename: path.dirname(filename),
 		});
+		await _storage.unlock(lockFilename);
 	},
 
 	/**
@@ -148,18 +168,21 @@ const _storage = {
 	 */
 	ensureDataFileIntegrity: async function (filename: string) {
 		const tempFilename = filename + "~";
+		const lockFilename = filename + ".lock";
+		await _storage.lock(lockFilename);
 		// write was successful
 		if (await _storage.exists(filename)) {
-			return;
+			return await _storage.unlock(lockFilename);
 		}
 		// new DB
 		else if (!(await _storage.exists(tempFilename))) {
-			return await _storage.writeFile(filename, "", "utf8");
+			await _storage.writeFile(filename, "", "utf8");
 		}
 		// write failed, use old version
 		else {
-			return await _storage.rename(tempFilename, filename);
+			await _storage.rename(tempFilename, filename);
 		}
+		await _storage.unlock(lockFilename);
 	},
 };
 
@@ -177,8 +200,9 @@ export { storage };
 
 export class FS_Persistence_Adapter extends Persistence {
 	async init() {
-		// TODO: watcher for files
+		// TODO: watcher for files, once you do it: remove load database from operations
 		// TODO: implement locking mechanism
+		// TODO: stream read & write
 	}
 
 	async read() {
