@@ -1,4 +1,4 @@
-import { Persistence } from "./core/persistence";
+import { Persistence } from "../core/persistence";
 import {
 	appendFile,
 	exists,

@@ -1,4 +1,4 @@
-import { FS_Persistence_Adapter, storage } from "../../src/fs-adapter";
+import { FS_Persistence_Adapter, storage } from "../../src/adapters/fs-adapter";
 import { Cursor, Datastore } from "@core";
 import { assert, expect, should, use } from "chai";
 import * as asPromised from "chai-as-promised";
