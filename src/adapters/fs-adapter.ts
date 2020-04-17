@@ -138,10 +138,52 @@ const _storage = {
 		});
 	},
 
+	createWriteableStream: function (
+		filename: string
+	): Promise<fs.WriteStream> {
+		return new Promise((resolve, reject) => {
+			const write = fs.createWriteStream(filename, { flags: "a" });
+			write.on("open", () => {
+				resolve(write);
+			});
+		});
+	},
+
+	writeSingleLine: function (stream: fs.WriteStream, line: string) {
+		return new Promise((resolve, reject) => {
+			stream.write(line, (err) => {
+				if (err) {
+					return reject(err);
+				}
+				resolve();
+			});
+		});
+	},
+
+	endStream: function (stream: fs.WriteStream) {
+		return new Promise((resolve) => {
+			stream.end(() => {
+				resolve();
+			});
+		});
+	},
+
+	writeByLine: async function (filename: string, data: string) {
+		await _storage.writeFile(filename, "", "utf8");
+		const stream = await _storage.createWriteableStream(filename);
+		const dataArr = data.split("\n");
+		for (let index = 0; index < dataArr.length; index++) {
+			const line = dataArr[index];
+			if (line) {
+				await _storage.writeSingleLine(stream, `${line}\n`);
+			}
+		}
+		await _storage.endStream(stream);
+	},
+
 	/**
 	 * Fully write or rewrite the datafile, immune to crashes during the write operation (data will not be lost)
 	 */
-
 	crashSafeWriteFile: async function (filename: string, data: string) {
 		const tempFilename = filename + "~";
 		const lockFilename = filename + ".lock";
@@ -153,7 +195,7 @@ const _storage = {
 		if (await _storage.exists(filename)) {
 			await _storage.flushToStorage(filename);
 		}
-		await _storage.writeFile(tempFilename, data);
+		await _storage.writeByLine(tempFilename, data);
 		await _storage.flushToStorage(tempFilename);
 		await _storage.rename(tempFilename, filename);
 		await _storage.flushToStorage({
@@ -201,7 +243,6 @@ export { storage };
 export class FS_Persistence_Adapter extends Persistence {
 	async init() {
 		// TODO: watcher for files, once you do it: remove load database from operations
-		// TODO: implement locking mechanism
 		// TODO: stream read & write
 	}
 
