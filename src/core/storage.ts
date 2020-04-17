@@ -11,10 +11,6 @@ import Q from "p-queue";
 import * as path from "path";
 import { promisify } from "util";
 
-interface KO {
-	[key: string]: any;
-}
-
 /**
  * To avoid bugs and corruption we created a queue for all file system related methods.
  * All calls to the storage must go through this queue.
@@ -168,6 +164,9 @@ const _storage = {
 
 const storage: typeof _storage = {} as typeof _storage;
 
+interface KO {
+	[key: string]: any;
+}
 Object.keys(_storage).forEach((key) => {
 	(storage as KO)[key] = (...args: any) =>
 		sq.add(() => (_storage as KO)[key](...args));
