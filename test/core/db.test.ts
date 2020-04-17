@@ -14,9 +14,15 @@ const testDb = "workspace/test.db";
 const reloadTimeUpperBound = 80;
 // In ms, an upper bound for the reload time used to check createdAt and updatedAt
 describe("Database", () => {
-	let d = new Datastore<any>({ ref: testDb });
+	let d = new Datastore<any>({
+		ref: testDb,
+		persistence_adapter: FS_Persistence_Adapter,
+	});
 	beforeEach(async () => {
-		d = new Datastore({ ref: testDb });
+		d = new Datastore({
+			ref: testDb,
+			persistence_adapter: FS_Persistence_Adapter,
+		});
 		d.ref.should.equal(testDb);
 		await storage.mkdirp(path.dirname(testDb));
 		if (await storage.exists(testDb)) {
@@ -213,6 +219,7 @@ describe("Database", () => {
 				d = new Datastore({
 					ref: testDb,
 					timestampData: true,
+					persistence_adapter: FS_Persistence_Adapter,
 				});
 				const beginning = Date.now();
 				await d.loadDatabase();
@@ -277,6 +284,7 @@ describe("Database", () => {
 			d = new Datastore({
 				ref: testDb,
 				timestampData: true,
+				persistence_adapter: FS_Persistence_Adapter,
 			});
 
 			await d.loadDatabase();
@@ -311,6 +319,7 @@ describe("Database", () => {
 			d = new Datastore({
 				ref: testDb,
 				timestampData: true,
+				persistence_adapter: FS_Persistence_Adapter,
 			});
 			await d.loadDatabase();
 			const insertedDoc = (await d.insert(newDoc)).docs[0];
@@ -523,6 +532,7 @@ describe("Database", () => {
 							// New datastore on same datafile is empty
 							var d2 = new Datastore({
 								ref: testDb,
+								persistence_adapter: FS_Persistence_Adapter,
 							});
 							await d2.loadDatabase();
 							d2.find({}).then(function (docs) {
@@ -839,6 +849,7 @@ describe("Database", () => {
 			d = new Datastore({
 				ref: testDb,
 				timestampData: true,
+				persistence_adapter: FS_Persistence_Adapter,
 			});
 			d.loadDatabase()
 				.then(() => d.insert({ hello: "world" }))
@@ -1093,6 +1104,7 @@ describe("Database", () => {
 			const db = new Datastore<any>({
 				ref: "workspace/test123",
 				timestampData: true,
+				persistence_adapter: FS_Persistence_Adapter,
 			});
 			db.loadDatabase();
 			await db.remove({}, { multi: true });
@@ -1253,6 +1265,7 @@ describe("Database", () => {
 			const d2 = new Datastore<any>({
 				ref: "workspace/tt.db",
 				timestampData: true,
+				persistence_adapter: FS_Persistence_Adapter,
 			});
 			await d2.loadDatabase();
 			await d2.remove({}, { multi: true });
@@ -2749,6 +2762,7 @@ describe("Database", () => {
 				}
 				let db = new Datastore({
 					ref: persDb,
+					persistence_adapter: FS_Persistence_Adapter,
 				});
 				db.loadDatabase().then(() => {
 					Object.keys(db.indexes).length.should.equal(1);
@@ -2776,7 +2790,10 @@ describe("Database", () => {
 										"planet"
 									);
 									// After a reload the indexes are recreated
-									db = new Datastore({ ref: persDb });
+									db = new Datastore({
+										ref: persDb,
+										persistence_adapter: FS_Persistence_Adapter,
+									});
 									db.loadDatabase().then(function () {
 										Object.keys(
 											db.indexes
@@ -2797,7 +2814,10 @@ describe("Database", () => {
 											"planet"
 										);
 										// After another reload the indexes are still there (i.e. they are preserved during autocompaction)
-										db = new Datastore({ ref: persDb });
+										db = new Datastore({
+											ref: persDb,
+											persistence_adapter: FS_Persistence_Adapter,
+										});
 										db.loadDatabase().then(function () {
 											Object.keys(
 												db.indexes
@@ -2833,6 +2853,7 @@ describe("Database", () => {
 				}
 				let db = new Datastore({
 					ref: persDb,
+					persistence_adapter: FS_Persistence_Adapter,
 				});
 				db.loadDatabase().then(() => {
 					Object.keys(db.indexes).length.should.equal(1);
@@ -2860,6 +2881,7 @@ describe("Database", () => {
 										// After a reload the indexes are recreated
 										db = new Datastore({
 											ref: persDb,
+											persistence_adapter: FS_Persistence_Adapter,
 										});
 										db.loadDatabase().then(function (err) {
 											Object.keys(
@@ -2925,6 +2947,7 @@ describe("Database", () => {
 												// After another reload the indexes are still there (i.e. they are preserved during autocompaction)
 												db = new Datastore({
 													ref: persDb,
+													persistence_adapter: FS_Persistence_Adapter,
 												});
 												db.loadDatabase().then(
 													function () {
@@ -2994,6 +3017,7 @@ describe("Database", () => {
 				}
 				let db = new Datastore({
 					ref: persDb,
+					persistence_adapter: FS_Persistence_Adapter,
 				});
 				db.loadDatabase().then(() => {
 					Object.keys(db.indexes).length.should.equal(1);
@@ -3029,6 +3053,7 @@ describe("Database", () => {
 										// After a reload the indexes are recreated
 										db = new Datastore({
 											ref: persDb,
+											persistence_adapter: FS_Persistence_Adapter,
 										});
 										db.loadDatabase().then(function () {
 											Object.keys(
@@ -3072,6 +3097,7 @@ describe("Database", () => {
 													// After a reload indexes are preserved
 													db = new Datastore({
 														ref: persDb,
+														persistence_adapter: FS_Persistence_Adapter,
 													});
 													db.loadDatabase().then(
 														function () {
@@ -3098,6 +3124,7 @@ describe("Database", () => {
 															// After another reload the indexes are still there (i.e. they are preserved during autocompaction)
 															db = new Datastore({
 																ref: persDb,
+																persistence_adapter: FS_Persistence_Adapter,
 															});
 															db.loadDatabase().then(
 																function () {
