@@ -205,7 +205,7 @@ describe("Persistence", () => {
 		_.isEqual(treatedData[1], { _id: "3", today: now }).should.equal(true);
 	});
 
-	it("Compact database on load", async () => {
+	it("Compact database manually", async () => {
 		await d.loadDatabase();
 		await d.insert({ a: 2 });
 		await d.insert({ a: 4 });
@@ -222,6 +222,7 @@ describe("Persistence", () => {
 		});
 		filledCount.should.equal(3);
 		await d.loadDatabase();
+		await d.persistence.compactDatafile();
 
 		// Now, the file has been compacted and is only 1 line long
 		const data2 = fs.readFileSync(d.ref, "utf8").split("\n");
@@ -698,6 +699,7 @@ describe("Persistence", () => {
 			);
 
 			await theDb.loadDatabase();
+			await theDb.persistence.compactDatafile();
 			const docs = await theDb.find({});
 			docs.length.should.equal(1);
 			(docs[0] as any).hello.should.equal("world");
@@ -920,6 +922,7 @@ describe("Persistence", () => {
 						persistence_adapter: FS_Persistence_Adapter,
 					});
 					await db.loadDatabase();
+					await db.persistence.compactDatafile();
 
 					fs.existsSync("workspace/lac.db").should.equal(true);
 					fs.existsSync("workspace/lac.db~").should.equal(false);

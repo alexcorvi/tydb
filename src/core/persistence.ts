@@ -224,7 +224,6 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 			this.db.resetIndexes(); // Rollback any index which didn't fail
 			throw e;
 		}
-		await this.db.persistence.persistCachedDatabase();
 		this.db.q.start();
 		return;
 	}
