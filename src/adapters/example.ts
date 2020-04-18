@@ -1,4 +1,4 @@
-import { Persistence as Base, PersistenceEvent } from "./persistence";
+import { Persistence as Base, PersistenceEvent } from "../core/persistence";
 
 /**
  * This file serves solely as the simplest example of how to write adapters
