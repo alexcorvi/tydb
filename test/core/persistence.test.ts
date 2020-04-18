@@ -1,5 +1,5 @@
 import { FS_Persistence_Adapter, storage } from "../../src/adapters/fs-adapter";
-import { Datastore, model, Persistence } from "@core";
+import { customUtils, Datastore, model, Persistence } from "@core";
 import { assert, expect, should, use } from "chai";
 import * as asPromised from "chai-as-promised";
 import * as child_process from "child_process";
@@ -19,7 +19,7 @@ describe("Persistence", () => {
 		persistence_adapter: FS_Persistence_Adapter,
 	});
 	beforeEach(async () => {
-		d = new Datastore({
+		d = new Datastore<any>({
 			ref: testDb,
 			persistence_adapter: FS_Persistence_Adapter,
 		});
@@ -27,12 +27,13 @@ describe("Persistence", () => {
 		await storage.mkdirp(path.dirname(testDb));
 		if (await storage.exists(testDb)) {
 			await promisify(fs.unlink)(testDb);
+			await promisify(fs.unlink)(testDb + ".idx.db");
 		}
 		await d.loadDatabase();
 		d.getAllData().length.should.equal(0);
 	});
 
-	it("Every line represents a document", () => {
+	it("Every line represents a document", async () => {
 		const now = new Date();
 
 		const rawData = `${model.serialize({
@@ -44,8 +45,13 @@ describe("Persistence", () => {
 			hello: "world",
 		})}\n${model.serialize({ _id: "3", nested: { today: now } })}`;
 
-		const treatedData = d.persistence.treatRawData(rawData).data;
-		treatedData.sort(({ _id: _id1 }, { _id: _id2 }) => _id1 - _id2);
+		fs.writeFileSync(testDb, rawData, "utf8");
+		await d.loadDatabase();
+		const treatedData: any[] = d.getAllData();
+
+		treatedData.sort(
+			({ _id: _id1 }, { _id: _id2 }) => (_id1 as any) - (_id2 as any)
+		);
 		treatedData.length.should.equal(3);
 		_.isEqual(treatedData[0], {
 			_id: "1",
@@ -61,7 +67,7 @@ describe("Persistence", () => {
 		}).should.equal(true);
 	});
 
-	it("Badly formatted lines have no impact on the treated data", () => {
+	it("Badly formatted lines have no impact on the treated data", async () => {
 		const now = new Date();
 		const obj1 = {
 			_id: "1",
@@ -76,14 +82,16 @@ describe("Persistence", () => {
 		const rawData = `${model.serialize(obj1)}\ngarbage\n${model.serialize(
 			obj2
 		)}`;
-		const treatedData = d.persistence.treatRawData(rawData).data;
+		fs.writeFileSync(testDb, rawData, "utf8");
+		await d.loadDatabase();
+		const treatedData: any[] = d.getAllData();
 		treatedData.sort(({ _id: _id1 }, { _id: _id2 }) => _id1 - _id2);
 		treatedData.length.should.equal(2);
 		_.isEqual(treatedData[0], obj1).should.equal(true);
 		_.isEqual(treatedData[1], obj2).should.equal(true);
 	});
 
-	it("Well formatted lines that have no _id are not included in the data", () => {
+	it("Well formatted lines that have no _id are not included in the data", async () => {
 		const now = new Date();
 
 		const rawData = `${model.serialize({
@@ -94,8 +102,9 @@ describe("Persistence", () => {
 			_id: "2",
 			hello: "world",
 		})}\n${model.serialize({ nested: { today: now } })}`;
-
-		const treatedData = d.persistence.treatRawData(rawData).data;
+		fs.writeFileSync(testDb, rawData, "utf8");
+		await d.loadDatabase();
+		const treatedData: any[] = d.getAllData();
 		treatedData.sort(({ _id: _id1 }, { _id: _id2 }) => _id1 - _id2);
 		treatedData.length.should.equal(2);
 		_.isEqual(treatedData[0], {
@@ -108,7 +117,7 @@ describe("Persistence", () => {
 		);
 	});
 
-	it("If two lines concern the same doc (= same _id), the last one is the good version", () => {
+	it("If two lines concern the same doc (= same _id), the last one is the good version", async () => {
 		const now = new Date();
 
 		const rawData = `${model.serialize({
@@ -119,8 +128,9 @@ describe("Persistence", () => {
 			_id: "2",
 			hello: "world",
 		})}\n${model.serialize({ _id: "1", nested: { today: now } })}`;
-
-		const treatedData = d.persistence.treatRawData(rawData).data;
+		fs.writeFileSync(testDb, rawData, "utf8");
+		await d.loadDatabase();
+		const treatedData: any[] = d.getAllData();
 		treatedData.sort(({ _id: _id1 }, { _id: _id2 }) => _id1 - _id2);
 		treatedData.length.should.equal(2);
 		_.isEqual(treatedData[0], {
@@ -132,7 +142,7 @@ describe("Persistence", () => {
 		);
 	});
 
-	it("If a doc contains $$deleted: true, that means we need to remove it from the data", () => {
+	it("If a doc contains $$deleted: true, that means we need to remove it from the data", async () => {
 		const now = new Date();
 
 		const rawData = `${model.serialize({
@@ -146,8 +156,9 @@ describe("Persistence", () => {
 			_id: "1",
 			$$deleted: true,
 		})}\n${model.serialize({ _id: "3", today: now })}`;
-
-		const treatedData = d.persistence.treatRawData(rawData).data;
+		fs.writeFileSync(testDb, rawData, "utf8");
+		await d.loadDatabase();
+		const treatedData: any[] = d.getAllData();
 		treatedData.sort(({ _id: _id1 }, { _id: _id2 }) => _id1 - _id2);
 		treatedData.length.should.equal(2);
 		_.isEqual(treatedData[0], { _id: "2", hello: "world" }).should.equal(
@@ -156,7 +167,7 @@ describe("Persistence", () => {
 		_.isEqual(treatedData[1], { _id: "3", today: now }).should.equal(true);
 	});
 
-	it("If a doc contains $$deleted: true, no error is thrown if the doc wasnt in the list before", () => {
+	it("If a doc contains $$deleted: true, no error is thrown if the doc wasnt in the list before", async () => {
 		const now = new Date();
 
 		const rawData = `${model.serialize({
@@ -167,8 +178,9 @@ describe("Persistence", () => {
 			_id: "2",
 			$$deleted: true,
 		})}\n${model.serialize({ _id: "3", today: now })}`;
-
-		const treatedData = d.persistence.treatRawData(rawData).data;
+		fs.writeFileSync(testDb, rawData, "utf8");
+		await d.loadDatabase();
+		const treatedData: any[] = d.getAllData();
 		treatedData.sort(({ _id: _id1 }, { _id: _id2 }) => _id1 - _id2);
 		treatedData.length.should.equal(2);
 		_.isEqual(treatedData[0], {
@@ -179,21 +191,32 @@ describe("Persistence", () => {
 		_.isEqual(treatedData[1], { _id: "3", today: now }).should.equal(true);
 	});
 
-	it("If a doc contains $$indexCreated, no error is thrown during treatRawData and we can get the index options", () => {
+	it("If a doc contains $$indexCreated, no error is thrown during treatRawData and we can get the index options", async () => {
 		const now = new Date();
-
+		fs.unlinkSync(testDb);
+		fs.unlinkSync(testDb + ".idx.db");
 		const rawData = `${model.serialize({
 			_id: "1",
 			a: 2,
 			ages: [1, 5, 12],
-		})}\n${model.serialize({
-			$$indexCreated: { fieldName: "test", unique: true },
 		})}\n${model.serialize({ _id: "3", today: now })}`;
-
-		const treatedData = d.persistence.treatRawData(rawData).data;
-		const indexes = d.persistence.treatRawData(rawData).indexes;
-		Object.keys(indexes).length.should.equal(1);
-		assert.deepEqual(indexes.test, { fieldName: "test", unique: true });
+		const rawIndexes = `${model.serialize({
+			$$indexCreated: { fieldName: "test", unique: true, sparse: true },
+		})}\n`;
+		fs.writeFileSync(testDb, rawData, "utf8");
+		fs.writeFileSync(testDb + ".idx.db", rawIndexes, "utf8");
+		await d.loadDatabase();
+		const treatedData: any[] = d.getAllData();
+		const indexes = d.indexes;
+		Object.keys(indexes).length.should.equal(2);
+		assert.deepEqual(
+			{
+				fieldName: indexes.test.fieldName,
+				unique: indexes.test.unique,
+				sparse: true,
+			},
+			{ fieldName: "test", unique: true, sparse: true }
+		);
 
 		treatedData.sort(({ _id: _id1 }, { _id: _id2 }) => _id1 - _id2);
 		treatedData.length.should.equal(2);
@@ -396,6 +419,7 @@ describe("Persistence", () => {
 		it("A serialization hook can be used to transform data before writing new state to disk", async () => {
 			const hookTestFilename = "workspace/hookTest.db";
 			await storage.ensureFileDoesntExist(hookTestFilename);
+			await storage.ensureFileDoesntExist(hookTestFilename + ".idx.db");
 			const d = new Datastore({
 				ref: hookTestFilename,
 				afterSerialization: as,
@@ -443,12 +467,17 @@ describe("Persistence", () => {
 			{
 				await d.ensureIndex({ fieldName: "idefix" });
 				const _data = fs.readFileSync(hookTestFilename, "utf8");
-
+				const _indexes = fs.readFileSync(
+					hookTestFilename + ".idx.db",
+					"utf8"
+				);
 				const data = _data.split("\n");
+				const indexes = _indexes.split("\n");
 				let doc0 = bd(data[0]);
 				let doc1 = bd(data[1]);
-				let idx = bd(data[2]);
-				data.length.should.equal(4);
+				let idx = bd(indexes[0]);
+				data.length.should.equal(3);
+				indexes.length.should.equal(2);
 
 				data[0].substring(0, 7).should.equal("before_");
 				data[0].substring(data[0].length - 6).should.equal("_after");
@@ -473,6 +502,7 @@ describe("Persistence", () => {
 		it("Use serialization hook when persisting cached database or compacting", async () => {
 			const hookTestFilename = "workspace/hookTest.db";
 			await storage.ensureFileDoesntExist(hookTestFilename);
+			await storage.ensureFileDoesntExist(hookTestFilename + ".idx.db");
 			const d = new Datastore({
 				ref: hookTestFilename,
 				afterSerialization: as,
@@ -493,11 +523,17 @@ describe("Persistence", () => {
 			let _id;
 			{
 				const _data = fs.readFileSync(hookTestFilename, "utf8");
+				const _indexes = fs.readFileSync(
+					hookTestFilename + ".idx.db",
+					"utf8"
+				);
 				const data = _data.split("\n");
+				const indexes = _indexes.split("\n");
 				let doc0 = bd(data[0]);
 				let doc1 = bd(data[1]);
-				let idx = bd(data[2]);
-				data.length.should.equal(4);
+				let idx = bd(indexes[0]);
+				data.length.should.equal(3);
+				indexes.length.should.equal(2);
 				doc0 = model.deserialize(doc0);
 				Object.keys(doc0).length.should.equal(2);
 				(doc0 as any).hello.should.equal("world");
@@ -514,12 +550,18 @@ describe("Persistence", () => {
 				});
 			}
 
-			await d.persistence.persistCachedDatabase();
+			await d.persistence.compactDatafile();
 			const _data = fs.readFileSync(hookTestFilename, "utf8");
+			const _indexes = fs.readFileSync(
+				hookTestFilename + ".idx.db",
+				"utf8"
+			);
 			const data = _data.split("\n");
+			const indexes = _indexes.split("\n");
 			let doc0 = bd(data[0]);
-			let idx = bd(data[1]);
-			data.length.should.equal(3);
+			let idx = bd(indexes[0]);
+			data.length.should.equal(2);
+			indexes.length.should.equal(2);
 			doc0 = model.deserialize(doc0);
 			Object.keys(doc0).length.should.equal(2);
 			(doc0 as any).hello.should.equal("earth");
@@ -557,8 +599,14 @@ describe("Persistence", () => {
 
 			{
 				const _data = fs.readFileSync(hookTestFilename, "utf8");
+				const _indexes = fs.readFileSync(
+					hookTestFilename + ".idx.db",
+					"utf8"
+				);
 				const data = _data.split("\n");
-				data.length.should.equal(6);
+				data.length.should.equal(5);
+				const indexes = _indexes.split("\n");
+				indexes.length.should.equal(2);
 				// Everything is deserialized correctly, including deletes and indexes
 				const d = new Datastore({
 					ref: hookTestFilename,
@@ -724,7 +772,7 @@ describe("Persistence", () => {
 			fs.writeFileSync(`${testDb}~`, "something", "utf8");
 			fs.existsSync(`${testDb}~`).should.equal(true);
 
-			await d.persistence.persistCachedDatabase();
+			await d.persistence.compactDatafile();
 			const contents = fs.readFileSync(testDb, "utf8");
 			fs.existsSync(testDb).should.equal(true);
 			fs.existsSync(`${testDb}~`).should.equal(false);
@@ -751,7 +799,7 @@ describe("Persistence", () => {
 			fs.existsSync(`${testDb}~`).should.equal(false);
 			fs.writeFileSync(`${testDb}~`, "bloup", "utf8");
 			fs.existsSync(`${testDb}~`).should.equal(true);
-			await d.persistence.persistCachedDatabase();
+			await d.persistence.compactDatafile();
 			const contents = fs.readFileSync(testDb, "utf8");
 			fs.existsSync(testDb).should.equal(true);
 			fs.existsSync(`${testDb}~`).should.equal(false);
@@ -776,7 +824,7 @@ describe("Persistence", () => {
 			fs.existsSync(testDb).should.equal(false);
 			fs.existsSync(`${testDb}~`).should.equal(true);
 
-			await d.persistence.persistCachedDatabase();
+			await d.persistence.compactDatafile();
 			const contents = fs.readFileSync(testDb, "utf8");
 			fs.existsSync(testDb).should.equal(true);
 			fs.existsSync(`${testDb}~`).should.equal(false);
@@ -990,6 +1038,53 @@ describe("Persistence", () => {
 					done();
 				})
 				.catch((e) => assert.isFalse(!!e));
+		});
+	}); // ==== End of 'ensureFileDoesntExist' ====
+
+	describe.skip("Dealing with large databases", function () {
+		this.timeout(6000 * 100);
+		// preparation
+		const dbRef = path.join(__dirname, "./test_lac/big.db");
+		async function prepare() {
+			const OBJ = {
+				hello: "world",
+				arr: ["a"],
+				text:
+					"In incididunt laboris consectetur ut non dolore tempor aute deserunt voluptate eu. Minim mollit consectetur pariatur irure anim ut elit consectetur. Pariatur amet irure adipisicing amet nisi aliqua enim consequat minim labore eu amet minim officia. Reprehenderit non incididunt fugiat aute mollit amet in sint occaecat reprehenderit. Ullamco consequat enim laboris duis consectetur nulla sunt magna minim.",
+				_id: "5a2a4713-23ae-4169-9235-f3ae49c95a1f",
+				createdAt: { $$date: 1587151303874 },
+				updatedAt: { $$date: 1587151303874 },
+			};
+
+			await storage.unlink(dbRef);
+			await storage.ensureDataFileIntegrity(dbRef);
+			const limit = 4000; // means 1 GB of data
+			for (let i = 0; i < limit; i++) {
+				OBJ._id = customUtils.randomString(100);
+				if (i === 987) {
+					OBJ._id = "known";
+				}
+				for (let i = 0; i < 10; i++) {
+					OBJ.arr.push(customUtils.randomString(10));
+				}
+				await storage.appendFile(dbRef, `${model.serialize(OBJ)}\n`);
+			}
+		}
+
+		const big = new Datastore({
+			ref: dbRef,
+			persistence_adapter: FS_Persistence_Adapter,
+		});
+
+		it("Loading the database", async function () {
+			await prepare();
+			await big.loadDatabase();
+			const t = new Date().getTime();
+			const found = await big.find({ _id: "known" });
+			assert.isDefined(found[0]);
+		});
+		it("Writing the database", async function () {
+			await big.persistence.compactDatafile();
 		});
 	}); // ==== End of 'ensureFileDoesntExist' ====
 });

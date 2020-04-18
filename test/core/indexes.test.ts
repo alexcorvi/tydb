@@ -699,7 +699,8 @@ describe("Indexes", () => {
 			idx.getMatching("world").length.should.equal(1);
 			idx.getMatching("bloup").length.should.equal(1);
 
-			idx.reset(newDoc);
+			idx.reset();
+			idx.insert(newDoc);
 			idx.tree.getNumberOfKeys().should.equal(1);
 			idx.getMatching("hello").length.should.equal(0);
 			idx.getMatching("world").length.should.equal(0);
@@ -727,7 +728,8 @@ describe("Indexes", () => {
 			idx.getMatching("world").length.should.equal(1);
 			idx.getMatching("bloup").length.should.equal(1);
 
-			idx.reset(newDocs);
+			idx.reset();
+			idx.insert(newDocs);
 			idx.tree.getNumberOfKeys().should.equal(2);
 			idx.getMatching("hello").length.should.equal(0);
 			idx.getMatching("world").length.should.equal(0);

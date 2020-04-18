@@ -99,9 +99,9 @@ export class Datastore<
 	/**
 	 * Reset all currently defined indexes
 	 */
-	resetIndexes(newData?: any) {
+	resetIndexes() {
 		Object.keys(this.indexes).forEach((i) => {
-			this.indexes[i].reset(newData);
+			this.indexes[i].reset();
 		});
 	}
 
@@ -140,7 +140,7 @@ export class Datastore<
 		}
 
 		// We may want to force all options to be persisted including defaults, not just the ones passed the index creation function
-		return await this.persistence.persistNewState([
+		return await this.persistence.persistByAppendNewIndex([
 			{ $$indexCreated: options },
 		]);
 	}
@@ -150,7 +150,7 @@ export class Datastore<
 	 */
 	async removeIndex(fieldName: string) {
 		delete this.indexes[fieldName];
-		return await this.persistence.persistNewState([
+		return await this.persistence.persistByAppendNewIndex([
 			{ $$indexRemoved: fieldName },
 		]);
 	}
@@ -373,7 +373,7 @@ export class Datastore<
 		let preparedDoc = this.prepareDocumentForInsertion(newDoc);
 		this._insertInCache(preparedDoc);
 
-		await this.persistence.persistNewState(
+		await this.persistence.persistByAppendNewData(
 			Array.isArray(preparedDoc) ? preparedDoc : [preparedDoc]
 		);
 		return model.deepCopy(preparedDoc);
@@ -548,7 +548,7 @@ export class Datastore<
 
 			// Update the datafile
 			const updatedDocs = modifications.map((x) => x.newDoc);
-			await this.persistence.persistNewState(updatedDocs);
+			await this.persistence.persistByAppendNewData(updatedDocs);
 
 			return {
 				number: updatedDocs.length,
@@ -621,7 +621,7 @@ export class Datastore<
 				this.removeFromIndexes(d);
 			}
 		});
-		await this.persistence.persistNewState(removedDocs);
+		await this.persistence.persistByAppendNewData(removedDocs);
 		return {
 			number: numRemoved,
 			docs: removedFullDoc,

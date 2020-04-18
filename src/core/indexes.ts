@@ -83,11 +83,8 @@ export class Index<Key, Doc extends Partial<BaseSchema>> {
 		this.tree = new AVLTree(this.treeOptions);
 	}
 
-	reset(newData?: any) {
+	reset() {
 		this.tree = new AVLTree(this.treeOptions);
-		if (newData) {
-			this.insert(newData);
-		}
 	}
 
 	/**

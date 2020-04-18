@@ -26,7 +26,7 @@ async function multipleOpen(filename: string, N: number) {
 async function persist() {
 	let i = 0;
 	while (i < 2 * N + 1) {
-		await db.persistence.persistCachedDatabase();
+		await db.persistence.compactDatafile();
 		i++;
 	}
 }

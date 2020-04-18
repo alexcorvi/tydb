@@ -1,16 +1,10 @@
-import { Persistence } from "../core/persistence";
-import {
-	appendFile,
-	exists,
-	readFile,
-	rename,
-	unlink,
-	writeFile
-	} from "fs";
+import { Persistence, PersistenceEvent } from "../core/persistence";
+import { appendFile, exists, readFile, rename, unlink, writeFile } from "fs";
 import * as fs from "fs";
-import { lock, unlock } from "lockfile";
+import { checkSync, lock, unlock } from "lockfile";
 import Q from "p-queue";
 import * as path from "path";
+import * as readline from "readline";
 import { promisify } from "util";
 
 /**
@@ -28,12 +22,8 @@ const _storage = {
 	lock: function (filename: string) {
 		return new Promise((resolve) => {
 			lock(filename, { retries: 5, retryWait: 1 }, function (err) {
-				if (err) {
-					_storage.lock(filename).then(() => {
-						resolve(true);
-					});
-				}
-				resolve(true);
+				if (err) _storage.lock(filename);
+				else resolve(true);
 			});
 		});
 	},
@@ -168,24 +158,29 @@ const _storage = {
 		});
 	},
 
-	writeByLine: async function (filename: string, data: string) {
-		await _storage.writeFile(filename, "", "utf8");
-		const stream = await _storage.createWriteableStream(filename);
-		const dataArr = data.split("\n");
-		for (let index = 0; index < dataArr.length; index++) {
-			const line = dataArr[index];
-			if (line) {
-				await _storage.writeSingleLine(stream, `${line}\n`);
-			}
-		}
-		await _storage.endStream(stream);
+	readByLine: async function (
+		filename: string,
+		onLine: (line: string) => void,
+		onClose: () => void
+	) {
+		const input = fs.createReadStream(filename);
+
+		var rl = readline.createInterface({
+			input: input,
+			terminal: false,
+		});
+
+		rl.on("line", function (line) {
+			onLine(line);
+		});
+
+		rl.on("close", function () {
+			onClose();
+			// TODO: make sure that no \n exist in the DB
+		});
 	},
 
-	/**
-	 * Fully write or rewrite the datafile, immune to crashes during the write operation (data will not be lost)
-	 */
-	crashSafeWriteFile: async function (filename: string, data: string) {
-		const tempFilename = filename + "~";
+	beforeWriteFile: async function (filename: string) {
 		const lockFilename = filename + ".lock";
 		await _storage.lock(lockFilename);
 		await _storage.flushToStorage({
@@ -195,7 +190,11 @@ const _storage = {
 		if (await _storage.exists(filename)) {
 			await _storage.flushToStorage(filename);
 		}
-		await _storage.writeByLine(tempFilename, data);
+	},
+
+	afterWritingFile: async function (filename: string) {
+		const tempFilename = filename + "~";
+		const lockFilename = filename + ".lock";
 		await _storage.flushToStorage(tempFilename);
 		await _storage.rename(tempFilename, filename);
 		await _storage.flushToStorage({
@@ -241,22 +240,90 @@ Object.keys(_storage).forEach((key) => {
 export { storage };
 
 export class FS_Persistence_Adapter extends Persistence {
+	indexesFilenameExtension = ".idx.db";
+
+	readFileByLine(event: PersistenceEvent, filename: string) {
+		return new Promise((resolve, reject) => {
+			storage
+				.mkdirp(path.dirname(filename))
+				.then(() => storage.ensureDataFileIntegrity(filename))
+				.then(() => {
+					storage.readByLine(
+						filename,
+						async (line) => {
+							await event.emit("readLine", line);
+						},
+						async () => {
+							resolve();
+						}
+					);
+				})
+				.catch((e) => reject(e));
+		});
+	}
+
+	writeFileByLine(event: PersistenceEvent, filename: string) {
+		return new Promise((resolve, reject) => {
+			storage
+				.beforeWriteFile(filename)
+				.then(() => {
+					return storage.writeFile(filename + "~", "", "utf8");
+				})
+				.then(() => {
+					return storage.createWriteableStream(filename + "~");
+				})
+				.then((stream) => {
+					event.on("writeLine", async (line) => {
+						if (line) {
+							await storage.writeSingleLine(stream, `${line}\n`);
+						}
+					});
+					event.on("end", async () => {
+						await storage.endStream(stream);
+						await storage.afterWritingFile(filename);
+					});
+					resolve();
+				})
+				.catch((e) => {
+					reject(e);
+				});
+		});
+	}
+
 	async init() {
+		// TODO: lock file
 		// TODO: watcher for files, once you do it: remove load database from operations
 		// TODO: stream read & write
+		// TODO: is this being called???
 	}
 
-	async read() {
-		await storage.mkdirp(path.dirname(this.ref));
-		await storage.ensureDataFileIntegrity(this.ref);
-		return await storage.readFile(this.ref, "utf8");
+	async readIndexes(event: PersistenceEvent) {
+		const filename = this.ref + this.indexesFilenameExtension;
+		await this.readFileByLine(event, filename);
 	}
 
-	async write(data: string) {
-		await storage.crashSafeWriteFile(this.ref, data);
+	async readData(event: PersistenceEvent) {
+		await this.readFileByLine(event, this.ref);
 	}
 
-	async append(data: string) {
-		await storage.appendFile(this.ref, data, "utf8");
+	async writeIndexes(event: PersistenceEvent) {
+		const filename = this.ref + this.indexesFilenameExtension;
+		await this.writeFileByLine(event, filename);
+	}
+
+	async writeData(event: PersistenceEvent) {
+		await this.writeFileByLine(event, this.ref);
+	}
+
+	async appendIndex(data: string) {
+		await storage.appendFile(
+			this.ref + this.indexesFilenameExtension,
+			`${data}\n`,
+			"utf8"
+		);
+	}
+
+	async appendData(data: string) {
+		await storage.appendFile(this.ref, `${data}\n`, "utf8");
 	}
 }

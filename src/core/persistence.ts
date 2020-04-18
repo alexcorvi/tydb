@@ -4,6 +4,37 @@ import { Index } from "./indexes";
 import * as model from "./model";
 import { BaseSchema } from "@types";
 
+type PersistenceEventCallback = (message: string) => Promise<void>;
+
+type PersistenceEventEmits = "readLine" | "writeLine" | "end";
+
+export class PersistenceEvent {
+	callbacks: {
+		readLine: Array<PersistenceEventCallback>;
+		writeLine: Array<PersistenceEventCallback>;
+		end: Array<PersistenceEventCallback>;
+	} = {
+		readLine: [],
+		writeLine: [],
+		end: [],
+	};
+
+	on(event: PersistenceEventEmits, cb: PersistenceEventCallback) {
+		if (!this.callbacks[event]) this.callbacks[event] = [];
+		this.callbacks[event].push(cb);
+	}
+
+	async emit(event: PersistenceEventEmits, data: string) {
+		let cbs = this.callbacks[event];
+		if (cbs) {
+			for (let i = 0; i < cbs.length; i++) {
+				const cb = cbs[i];
+				await cb(data);
+			}
+		}
+	}
+}
+
 interface PersistenceOptions<G extends Partial<BaseSchema>> {
 	db: Datastore<G>;
 	afterSerialization?: (raw: string) => string;
@@ -16,18 +47,13 @@ interface PersistenceOptions<G extends Partial<BaseSchema>> {
  */
 export class Persistence<G extends Partial<BaseSchema> = any> {
 	db: Datastore<G>;
-
 	ref: string = "";
-
 	corruptAlertThreshold: number = 0.1;
-
 	afterSerialization = (s: string) => s;
 	beforeDeserialization = (s: string) => s;
-
 	autocompactionIntervalId: NodeJS.Timeout | undefined;
-
-	private memory: { [key: string]: string } = {};
-
+	protected _memoryIndexes: string[] = [];
+	protected _memoryData: string[] = [];
 	constructor(options: PersistenceOptions<G>) {
 		this.db = options.db;
 		this.ref = this.db.ref;
@@ -68,33 +94,51 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 				"beforeDeserialization is not the reverse of afterSerialization, cautiously refusing to start data store to prevent dataloss"
 			);
 		}
+		this.init();
 	}
 
-	/**
-	 * Persist cached database
-	 * This serves as a compaction function since the cache always contains only the actual of documents in the collection
-	 * while the data file is append-only so it may grow larger
-	 */
-	async persistCachedDatabase() {
-		let toPersist = "";
-		this.db.getAllData().forEach((doc: any) => {
-			toPersist += `${this.afterSerialization(model.serialize(doc))}\n`;
-		});
-		Object.keys(this.db.indexes).forEach((fieldName) => {
-			if (fieldName != "_id") {
+	private async persistAllIndexes() {
+		const emitter = new PersistenceEvent();
+		await this.writeIndexes(emitter);
+		const allKeys = Object.keys(this.db.indexes);
+		for (let i = 0; i < allKeys.length; i++) {
+			const fieldName = allKeys[i];
+			if (fieldName !== "_id") {
 				// The special _id index is managed by datastore.ts, the others need to be persisted
-				toPersist += `${this.afterSerialization(
-					model.serialize({
-						$$indexCreated: {
-							fieldName,
-							unique: this.db.indexes[fieldName].unique,
-							sparse: this.db.indexes[fieldName].sparse,
-						},
-					})
-				)}\n`;
+				await emitter.emit(
+					"writeLine",
+					this.afterSerialization(
+						model.serialize({
+							$$indexCreated: {
+								fieldName,
+								unique: this.db.indexes[fieldName].unique,
+								sparse: this.db.indexes[fieldName].sparse,
+							},
+						})
+					)
+				);
 			}
-		});
-		await this.write(toPersist);
+		}
+		await emitter.emit("end", "");
+	}
+
+	private async persistAllData() {
+		const emitter = new PersistenceEvent();
+		await this.writeData(emitter);
+		const allData = this.db.getAllData();
+		for (let i = 0; i < allData.length; i++) {
+			const doc = allData[i];
+			await emitter.emit(
+				"writeLine",
+				this.afterSerialization(model.serialize(doc))
+			);
+		}
+		await emitter.emit("end", "");
+	}
+
+	private async persistCachedDatabase() {
+		await this.persistAllData();
+		await this.persistAllIndexes();
 	}
 
 	/**
@@ -125,77 +169,80 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 		}
 	}
 
-	/**
-	 * Persist new state for the given newDocs (can be insertion, update or removal)
-	 * Use an append-only format
-	 */
-	async persistNewState(newDocs: any[]) {
-		let toPersist = "";
-		newDocs.forEach((doc) => {
-			toPersist += `${this.afterSerialization(model.serialize(doc))}\n`;
-		});
-		if (toPersist.length === 0) {
-			return;
-		}
-		await this.append(toPersist);
-	}
-
-	/**
-	 * From a database's raw data, return the corresponding
-	 * machine understandable collection
-	 */
-	treatRawData(rawData: string) {
-		const data = rawData.split("\n"); // Last line of every data file is usually blank so not really corrupt
-		const dataById: { [key: string]: any } = {};
-		const tData: any[] = [];
-		const indexes: { [key: string]: any } = {};
-		let corruptItems = 0;
-		for (let i = 0; i < data.length; i++) {
-			if (data[i].length === 0 && i === data.length - 1) {
-				// last line is always empty
-				// can be falsely flagged as corrupt
-				continue;
-			}
-			try {
-				let doc = model.deserialize(
-					this.beforeDeserialization(data[i])
-				);
-				if (doc._id) {
-					if (doc.$$deleted === true) {
-						delete dataById[doc._id];
-					} else {
-						dataById[doc._id] = doc;
-					}
-				} else if (
-					doc.$$indexCreated &&
-					doc.$$indexCreated.fieldName !== undefined
-				) {
-					indexes[doc.$$indexCreated.fieldName] = doc.$$indexCreated;
-				} else if (typeof doc.$$indexRemoved === "string") {
-					delete indexes[doc.$$indexRemoved];
-				}
-			} catch (e) {
-				corruptItems++;
-			}
-		}
-
-		// A bit lenient on corruption
-		if (
-			data.length > 0 &&
-			corruptItems / data.length > this.corruptAlertThreshold
-		) {
-			throw new Error(
-				`More than ${Math.floor(
-					100 * this.corruptAlertThreshold
-				)}% of the data file is corrupt, the wrong beforeDeserialization hook may be used. Cautiously refusing to start Datastore to prevent dataloss`
+	async persistByAppendNewIndex(newDocs: any[]) {
+		for (let i = 0; i < newDocs.length; i++) {
+			const doc = newDocs[i];
+			await this.appendIndex(
+				this.afterSerialization(model.serialize(doc))
 			);
 		}
+	}
 
-		Object.keys(dataById).forEach((k) => {
-			tData.push(dataById[k]);
-		});
+	async persistByAppendNewData(newDocs: any[]) {
+		for (let i = 0; i < newDocs.length; i++) {
+			const doc = newDocs[i];
+			await this.appendData(
+				this.afterSerialization(model.serialize(doc))
+			);
+		}
+	}
 
-		return { data: tData, indexes };
+	treatSingleLine(
+		line: string
+	): {
+		type: "index" | "doc" | "corrupt";
+		status: "add" | "remove";
+		data: any;
+	} {
+		let treatedLine: any;
+		try {
+			treatedLine = model.deserialize(this.beforeDeserialization(line));
+		} catch (e) {
+			return {
+				type: "corrupt",
+				status: "remove",
+				data: false,
+			};
+		}
+		if (treatedLine._id) {
+			if (treatedLine.$$deleted === true) {
+				return {
+					type: "doc",
+					status: "remove",
+					data: { _id: treatedLine._id },
+				};
+			} else {
+				return {
+					type: "doc",
+					status: "add",
+					data: treatedLine,
+				};
+			}
+		} else if (
+			treatedLine.$$indexCreated &&
+			treatedLine.$$indexCreated.fieldName !== undefined
+		) {
+			return {
+				type: "index",
+				status: "add",
+				data: {
+					fieldName: treatedLine.$$indexCreated.fieldName,
+					data: treatedLine.$$indexCreated,
+				},
+			};
+		} else if (typeof treatedLine.$$indexRemoved === "string") {
+			return {
+				type: "index",
+				status: "remove",
+				data: { fieldName: treatedLine.$$indexRemoved },
+			};
+		} else {
+			return {
+				type: "corrupt",
+				status: "remove",
+				data: true,
+			};
+		}
 	}
 
 	/**
@@ -210,37 +257,104 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 	async loadDatabase() {
 		this.db.q.pause();
 		this.db.resetIndexes();
-		let rawData = await this.read();
-		let treatedData = this.treatRawData(rawData);
-		// Recreate all indexes in the datafile
-		Object.keys(treatedData.indexes).forEach((key) => {
-			let index = new Index<string, G>(treatedData.indexes[key]);
-			this.db.indexes[key] = index;
+		const indexesEmitter = new PersistenceEvent();
+		let corrupt = 0;
+		let processed = 0;
+		let err: any;
+		indexesEmitter.on("readLine", async (line) => {
+			processed++;
+			const treatedLine = this.treatSingleLine(line);
+			if (treatedLine.type === "index") {
+				if (treatedLine.status === "add") {
+					this.db.indexes[treatedLine.data.fieldName] = new Index(
+						treatedLine.data.data
+					);
+				}
+				if (treatedLine.status === "remove") {
+					delete this.db.indexes[treatedLine.data.fieldName];
+				}
+			} else if (!treatedLine.data) {
+				corrupt++;
+			}
 		});
-		// Fill cached database (i.e. all indexes) with data
-		try {
-			this.db.resetIndexes(treatedData.data);
-		} catch (e) {
-			this.db.resetIndexes(); // Rollback any index which didn't fail
-			throw e;
+		await this.readIndexes(indexesEmitter);
+
+		const dataEmitter = new PersistenceEvent();
+		dataEmitter.on("readLine", async (line) => {
+			processed++;
+			const treatedLine = this.treatSingleLine(line);
+			if (treatedLine.type === "doc") {
+				if (treatedLine.status === "add") {
+					try {
+						this.db.addToIndexes(treatedLine.data);
+					} catch (e) {
+						// hacky way of dealing with updates
+						if (e.toString().indexOf(treatedLine.data._id) !== -1) {
+							this.db.removeFromIndexes(treatedLine.data);
+							this.db.addToIndexes(treatedLine.data);
+						} else {
+							err = e;
+						}
+					}
+				}
+				if (treatedLine.status === "remove") {
+					this.db.removeFromIndexes(treatedLine.data);
+				}
+			} else if (!treatedLine.data) {
+				corrupt++;
+			}
+		});
+		await this.readData(dataEmitter);
+
+		if (processed > 0 && corrupt / processed > this.corruptAlertThreshold) {
+			throw new Error(
+				`More than ${Math.floor(
+					100 * this.corruptAlertThreshold
+				)}% of the data file is corrupt, the wrong beforeDeserialization hook may be used. Cautiously refusing to start Datastore to prevent dataloss`
+			);
+		} else if (err) {
+			throw err;
 		}
+
 		this.db.q.start();
 		return;
 	}
 
-	async init() {
-		this.memory[this.ref] = "";
+	async init() {}
+
+	async readIndexes(event: PersistenceEvent) {
+		for (let index = 0; index < this._memoryIndexes.length; index++) {
+			const line = this._memoryIndexes[index];
+			event.emit("readLine", line);
+		}
 	}
 
-	async read() {
-		return this.memory[this.ref] || "";
+	async readData(event: PersistenceEvent) {
+		for (let index = 0; index < this._memoryData.length; index++) {
+			const line = this._memoryData[index];
+			event.emit("readLine", line);
+		}
 	}
 
-	async write(data: string) {
-		this.memory[this.ref] = data || "";
+	async writeIndexes(event: PersistenceEvent) {
+		this._memoryIndexes = [];
+		event.on("writeLine", async (data) => {
+			this._memoryIndexes.push(data);
+		});
 	}
 
-	async append(data: string) {
-		this.memory[this.ref] = (this.memory[this.ref] || "") + (data || "");
+	async writeData(event: PersistenceEvent) {
+		this._memoryData = [];
+		event.on("writeLine", async (data) => {
+			this._memoryData.push(data);
+		});
+	}
+
+	async appendIndex(data: string) {
+		this._memoryIndexes.push(data);
+	}
+
+	async appendData(data: string) {
+		this._memoryData.push(data);
 	}
 }

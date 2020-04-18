@@ -27,6 +27,7 @@ describe("Database", () => {
 		await storage.mkdirp(path.dirname(testDb));
 		if (await storage.exists(testDb)) {
 			await promisify(fs.unlink)(testDb);
+			await promisify(fs.unlink)(testDb + ".idx.db");
 		}
 		await d.loadDatabase();
 		d.getAllData().length.should.equal(0);
@@ -202,7 +203,7 @@ describe("Database", () => {
 				const length = (await d.find({})).length;
 				// Datafile only contains index definition
 				const datafileContents = model.deserialize(
-					fs.readFileSync(testDb, "utf8")
+					fs.readFileSync(testDb + ".idx.db", "utf8")
 				);
 				assert.deepEqual(datafileContents, {
 					$$indexCreated: {
@@ -527,7 +528,14 @@ describe("Database", () => {
 								testDb,
 								"utf8"
 							);
-							datafileContents.split("\n").length.should.equal(2);
+							var indexfileContents = fs.readFileSync(
+								testDb + ".idx.db",
+								"utf8"
+							);
+							datafileContents.split("\n").length.should.equal(1);
+							indexfileContents
+								.split("\n")
+								.length.should.equal(2);
 							assert.isNull(datafileContents.match(/world/));
 							// New datastore on same datafile is empty
 							var d2 = new Datastore({
@@ -1707,7 +1715,7 @@ describe("Database", () => {
 					});
 				});
 			});
-			it("If a unique constraint is not respected, database loading will not work and no data will be inserted", (done) => {
+			it("If a unique constraint is not respected, database loading will throw but the valid data will be still be usable", (done) => {
 				const now = new Date();
 
 				const rawData = `${model.serialize({
@@ -1735,10 +1743,10 @@ describe("Database", () => {
 						expect(d.loadDatabase())
 							.to.be.rejectedWith(Error)
 							.then(() => {
-								d.getAllData().length.should.equal(0);
+								d.getAllData().length.should.equal(2);
 								d.indexes.z.tree
 									.getNumberOfKeys()
-									.should.equal(0);
+									.should.equal(2);
 								done();
 							});
 					});
@@ -2757,9 +2765,8 @@ describe("Database", () => {
 		describe("Persisting indexes", function () {
 			it("Indexes are persisted to a separate file and recreated upon reload", function (done) {
 				var persDb = "workspace/persistIndexes.db";
-				if (fs.existsSync(persDb)) {
-					fs.writeFileSync(persDb, "", "utf8");
-				}
+				fs.unlinkSync(persDb);
+				fs.unlinkSync(persDb + ".idx.db");
 				let db = new Datastore({
 					ref: persDb,
 					persistence_adapter: FS_Persistence_Adapter,
@@ -2848,9 +2855,8 @@ describe("Database", () => {
 			});
 			it("Indexes are persisted with their options and recreated even if some db operation happen between loads", function (done) {
 				var persDb = "workspace/persistIndexes.db";
-				if (fs.existsSync(persDb)) {
-					fs.writeFileSync(persDb, "", "utf8");
-				}
+				fs.unlinkSync(persDb);
+				fs.unlinkSync(persDb + ".idx.db");
 				let db = new Datastore({
 					ref: persDb,
 					persistence_adapter: FS_Persistence_Adapter,
@@ -3012,9 +3018,8 @@ describe("Database", () => {
 			});
 			it("Indexes can also be removed and the remove persisted", function (done) {
 				var persDb = "workspace/persistIndexes.db";
-				if (fs.existsSync(persDb)) {
-					fs.writeFileSync(persDb, "", "utf8");
-				}
+				fs.unlinkSync(persDb);
+				fs.unlinkSync(persDb + ".idx.db");
 				let db = new Datastore({
 					ref: persDb,
 					persistence_adapter: FS_Persistence_Adapter,
