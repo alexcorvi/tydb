@@ -176,7 +176,6 @@ const _storage = {
 
 		rl.on("close", function () {
 			onClose();
-			// TODO: make sure that no \n exist in the DB
 		});
 	},
 
@@ -291,10 +290,7 @@ export class FS_Persistence_Adapter extends Persistence {
 	}
 
 	async init() {
-		// TODO: lock file
 		// TODO: watcher for files, once you do it: remove load database from operations
-		// TODO: stream read & write
-		// TODO: is this being called???
 	}
 
 	async readIndexes(event: PersistenceEvent) {
