@@ -18,6 +18,7 @@
 	"author": "Alex Corvi",
 	"license": "MIT",
 	"dependencies": {
+		"chokidar": "^3.3.1",
 		"lockfile": "^1.0.4",
 		"p-queue": "^6.3.0"
 	},
