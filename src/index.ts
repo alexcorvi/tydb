@@ -7,9 +7,6 @@ import * as path from "path";
 export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 	private _database: Datastore<Schema>;
 
-	name: string;
-	filePath: string;
-
 	constructor(
 		options: string | (DataStoreOptions & { autoCompaction?: number })
 	) {
@@ -21,8 +18,6 @@ export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 		const db = new Datastore<Schema>(options);
 		super(db);
 		this._database = db;
-		this.name = options.ref;
-		this.filePath = path.resolve(this.name);
 		if (options.autoCompaction === undefined) options.autoCompaction = 0;
 		if (options.autoCompaction > 0) {
 			this._database.persistence.setAutocompactionInterval(
@@ -31,8 +26,8 @@ export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 		}
 	}
 
-	compact() {
-		this._database.persistence.compactDatafile();
+	async compact() {
+		await this._database.persistence.compactDatafile();
 	}
 
 	stopAutoCompaction() {
@@ -41,13 +36,5 @@ export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 
 	resetAutoCompaction(interval: number) {
 		this._database.persistence.setAutocompactionInterval(interval);
-	}
-
-	async backup(path: string) {
-		await compress.gzip(this.filePath, path);
-	}
-
-	async restore(path: string) {
-		await compress.unzip(path, this.filePath);
 	}
 }
