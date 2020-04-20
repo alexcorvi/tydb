@@ -1,5 +1,4 @@
 import { Persistence, PersistenceEvent } from "../core/persistence";
-import { FSWatcher, watch } from "chokidar";
 import * as fs from "fs";
 import {
 	appendFile,
@@ -246,8 +245,6 @@ Object.keys(_storage).forEach((key) => {
 
 export { storage };
 
-const watchers: { [key: string]: FSWatcher[] } = {};
-
 export class FS_Persistence_Adapter extends Persistence {
 	indexesFilenameExtension = ".idx.db";
 
@@ -290,7 +287,6 @@ export class FS_Persistence_Adapter extends Persistence {
 					event.on("end", async () => {
 						await storage.endStream(stream);
 						await storage.afterWritingFile(filename);
-						this.startWatchingSingleFile(filename);
 					});
 					resolve();
 				})
@@ -300,37 +296,8 @@ export class FS_Persistence_Adapter extends Persistence {
 		});
 	}
 
-	async init() {
-		this.startWatchingSingleFile(this.ref);
-		this.startWatchingSingleFile(this.ref + ".idx.db");
-	}
+	async init() {}
 
-	startWatchingSingleFile(fileName: string) {
-		if (!watchers[fileName]) {
-			watchers[fileName] = [];
-		}
-		watchers[fileName].push(watch(fileName));
-		watchers[fileName][watchers[fileName].length - 1].on(
-			"change",
-			async () => {
-				await this.loadDatabase();
-			}
-		);
-	}
-
-	async stopWatchingSingleFile(fileName: string) {
-		if (watchers[fileName]) {
-			// we do everything in our power
-			// to make sure that the watch
-			// event will not be triggered
-			for (let i = 0; i < watchers[fileName].length; i++) {
-				watchers[fileName][i].unwatch(fileName);
-				await watchers[fileName][i].close();
-				watchers[fileName].splice(i, 1);
-			}
-			watchers[fileName] = [];
-		}
-	}
 	async readIndexes(event: PersistenceEvent) {
 		const filename = this.ref + this.indexesFilenameExtension;
 		await this.readFileByLine(event, filename);
@@ -342,30 +309,22 @@ export class FS_Persistence_Adapter extends Persistence {
 
 	async rewriteIndexes(event: PersistenceEvent) {
 		const filename = this.ref + this.indexesFilenameExtension;
-		await this.stopWatchingSingleFile(filename);
 		await this.writeFileByLine(event, filename);
 	}
 
 	async rewriteData(event: PersistenceEvent) {
-		await this.stopWatchingSingleFile(this.ref);
 		await this.writeFileByLine(event, this.ref);
 	}
 
 	async appendIndex(data: string) {
-		await this.stopWatchingSingleFile(
-			this.ref + this.indexesFilenameExtension
-		);
 		await storage.appendFile(
 			this.ref + this.indexesFilenameExtension,
 			`${data}\n`,
 			"utf8"
 		);
-		this.startWatchingSingleFile(this.ref + this.indexesFilenameExtension);
 	}
 
 	async appendData(data: string) {
-		await this.stopWatchingSingleFile(this.ref);
 		await storage.appendFile(this.ref, `${data}\n`, "utf8");
-		this.startWatchingSingleFile(this.ref);
 	}
 }
