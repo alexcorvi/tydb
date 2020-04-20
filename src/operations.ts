@@ -13,6 +13,7 @@ export class Operations<S extends BaseSchema> {
 
 	constructor(_datastore: Datastore<S>) {
 		this._datastore = _datastore;
+		this._datastore.loadDatabase();
 	}
 
 	private async _connect() {
@@ -24,7 +25,7 @@ export class Operations<S extends BaseSchema> {
 	 * Put one document
 	 */
 	public async insert(docs: S[]): Promise<{ docs: S[]; number: number }> {
-		return (await this._connect()).insert(docs);
+		return this._datastore.insert(docs);
 	}
 
 	/**
@@ -36,7 +37,7 @@ export class Operations<S extends BaseSchema> {
 	 * Database cursor
 	 */
 	public async cursor(filter: Filter<S>) {
-		return (await this._connect()).cursor(filter);
+		return this._datastore.cursor(filter);
 	}
 
 	/**
@@ -56,7 +57,7 @@ export class Operations<S extends BaseSchema> {
 		project?: SchemaKeyProjection<S>;
 	}): Promise<S[]> {
 		filter = fixDeep(filter || {});
-		const cursor = (await this._connect()).cursor(filter);
+		const cursor = this._datastore.cursor(filter);
 		if (sort) {
 			cursor.sort(sort);
 		}
@@ -94,7 +95,7 @@ export class Operations<S extends BaseSchema> {
 		if (update.$set) {
 			update.$set = fixDeep(update.$set);
 		}
-		return await (await this._connect()).update(filter, update, {
+		return await this._datastore.update(filter, update, {
 			multi,
 			upsert: false,
 		});
@@ -114,7 +115,7 @@ export class Operations<S extends BaseSchema> {
 		multi?: boolean;
 	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
-		return await (await this._connect()).update(filter, update, {
+		return await this._datastore.update(filter, update, {
 			multi,
 			upsert: true,
 		});
@@ -132,7 +133,7 @@ export class Operations<S extends BaseSchema> {
 		multi: boolean;
 	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
-		return (await this._connect()).remove(filter, { multi });
+		return this._datastore.remove(filter, { multi });
 	}
 
 	/**
@@ -144,7 +145,7 @@ export class Operations<S extends BaseSchema> {
 		filter?: Filter<S>;
 	} = {}): Promise<number> {
 		filter = fixDeep(filter || {});
-		return await (await this._connect()).count(filter);
+		return await this._datastore.count(filter);
 	}
 }
 
