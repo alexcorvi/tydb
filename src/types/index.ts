@@ -1,4 +1,4 @@
-export { BaseSchema } from "./base-schema";
+export { BaseSchema, SF, SP } from "./base-schema";
 export {
 	FieldLevelQueryOperators,
 	TopLevelQueryOperators,

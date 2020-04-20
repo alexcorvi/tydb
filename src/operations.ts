@@ -6,7 +6,9 @@ import {
 	SchemaKeySort,
 	UpdateOperators,
 	FieldLevelQueryOperators,
-} from "@types";
+	SF,
+	SP,
+} from "./types"; // for some reason using @types will disable some type checks
 
 export class Operations<S extends BaseSchema> {
 	private _datastore: Datastore<S>;
@@ -16,15 +18,12 @@ export class Operations<S extends BaseSchema> {
 		this._datastore.loadDatabase();
 	}
 
-	private async _connect() {
-		await this._datastore.loadDatabase();
-		return this._datastore;
-	}
-
 	/**
 	 * Put one document
 	 */
-	public async insert(docs: S[]): Promise<{ docs: S[]; number: number }> {
+	public async insert(
+		docs: SP<S>[]
+	): Promise<{ docs: SF<S>[]; number: number }> {
 		return this._datastore.insert(docs);
 	}
 
@@ -36,7 +35,7 @@ export class Operations<S extends BaseSchema> {
 	/**
 	 * Database cursor
 	 */
-	public cursor(filter: Filter<S>) {
+	public cursor(filter: Filter<SF<S>>) {
 		return this._datastore.cursor(filter);
 	}
 
@@ -50,12 +49,12 @@ export class Operations<S extends BaseSchema> {
 		project,
 		sort = undefined,
 	}: {
-		filter?: Filter<S>;
+		filter?: Filter<SF<S>>;
 		skip?: number;
 		limit?: number;
-		sort?: SchemaKeySort<S>;
-		project?: SchemaKeyProjection<S>;
-	}): Promise<S[]> {
+		sort?: SchemaKeySort<SF<S>>;
+		project?: SchemaKeyProjection<SF<S>>;
+	}): Promise<SF<S>[]> {
 		filter = fixDeep(filter || {});
 		const cursor = this._datastore.cursor(filter);
 		if (sort) {
@@ -86,10 +85,10 @@ export class Operations<S extends BaseSchema> {
 		update,
 		multi,
 	}: {
-		filter: Filter<S>;
-		update: UpdateOperators<S>;
+		filter: Filter<SF<S>>;
+		update: UpdateOperators<SF<S>>;
 		multi?: boolean;
-	}): Promise<{ docs: S[]; number: number }> {
+	}): Promise<{ docs: SF<S>[]; number: number }> {
 		filter = fixDeep(filter || {});
 		update = fix$Pull$eq(update);
 		if (update.$set) {
@@ -110,10 +109,10 @@ export class Operations<S extends BaseSchema> {
 		update,
 		multi,
 	}: {
-		filter: Filter<S>;
-		update: S;
+		filter: Filter<SF<S>>;
+		update: SP<S>;
 		multi?: boolean;
-	}): Promise<{ docs: S[]; number: number }> {
+	}): Promise<{ docs: SF<S>[]; number: number }> {
 		filter = fixDeep(filter || {});
 		return await this._datastore.update(filter, update, {
 			multi,
@@ -129,9 +128,9 @@ export class Operations<S extends BaseSchema> {
 		filter,
 		multi,
 	}: {
-		filter: Filter<S>;
+		filter: Filter<SF<S>>;
 		multi: boolean;
-	}): Promise<{ docs: S[]; number: number }> {
+	}): Promise<{ docs: SF<S>[]; number: number }> {
 		filter = fixDeep(filter || {});
 		return this._datastore.remove(filter, { multi });
 	}
@@ -142,7 +141,7 @@ export class Operations<S extends BaseSchema> {
 	public async count({
 		filter,
 	}: {
-		filter?: Filter<S>;
+		filter?: Filter<SF<S>>;
 	} = {}): Promise<number> {
 		filter = fixDeep(filter || {});
 		return await this._datastore.count(filter);
