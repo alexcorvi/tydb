@@ -36,7 +36,7 @@ export class Operations<S extends BaseSchema> {
 	/**
 	 * Database cursor
 	 */
-	public async cursor(filter: Filter<S>) {
+	public cursor(filter: Filter<S>) {
 		return this._datastore.cursor(filter);
 	}
 
