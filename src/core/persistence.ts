@@ -317,7 +317,7 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 		}
 
 		this.db.q.start();
-		return;
+		return true;
 	}
 
 	async init() {}

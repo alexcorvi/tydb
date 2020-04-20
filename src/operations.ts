@@ -15,7 +15,6 @@ export class Operations<S extends BaseSchema> {
 
 	constructor(_datastore: Datastore<S>) {
 		this._datastore = _datastore;
-		this._datastore.loadDatabase();
 	}
 
 	/**

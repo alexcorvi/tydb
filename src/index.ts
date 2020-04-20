@@ -7,6 +7,8 @@ import * as path from "path";
 export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 	private _database: Datastore<Schema>;
 
+	public loaded: Promise<boolean>;
+
 	constructor(
 		options: string | (DataStoreOptions & { autoCompaction?: number })
 	) {
@@ -17,6 +19,7 @@ export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 		}
 		const db = new Datastore<Schema>(options);
 		super(db);
+		this.loaded = db.loadDatabase();
 		this._database = db;
 		if (options.autoCompaction === undefined) options.autoCompaction = 0;
 		if (options.autoCompaction > 0) {
