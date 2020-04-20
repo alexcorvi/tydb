@@ -14,12 +14,10 @@ const testDb = "workspace/test.db";
 describe("Cursor", () => {
 	let d = new Datastore<any>({
 		ref: testDb,
-		persistence_adapter: FS_Persistence_Adapter,
 	});
 	beforeEach(async () => {
 		d = new Datastore({
 			ref: testDb,
-			persistence_adapter: FS_Persistence_Adapter,
 		});
 		d.ref.should.equal(testDb);
 		await storage.mkdirp(path.dirname(testDb));
