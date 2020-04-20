@@ -17,7 +17,7 @@ export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 				ref: options,
 			};
 		}
-		const db = new Datastore<Schema>(options);
+		const db = new Datastore<any>(options);
 		super(db);
 		this.loaded = db.loadDatabase();
 		this._database = db;

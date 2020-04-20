@@ -1,4 +1,4 @@
-import { Datastore } from "@core";
+import { Cursor, Datastore } from "@core";
 import {
 	BaseSchema,
 	Filter,
@@ -11,9 +11,9 @@ import {
 } from "./types"; // for some reason using @types will disable some type checks
 
 export class Operations<S extends BaseSchema> {
-	private _datastore: Datastore<S>;
+	private _datastore: Datastore<SF<S>>;
 
-	constructor(_datastore: Datastore<S>) {
+	constructor(_datastore: Datastore<SF<S>>) {
 		this._datastore = _datastore;
 	}
 
@@ -23,18 +23,13 @@ export class Operations<S extends BaseSchema> {
 	public async insert(
 		docs: SP<S>[]
 	): Promise<{ docs: SF<S>[]; number: number }> {
-		return this._datastore.insert(docs);
+		return this._datastore.insert(docs as any);
 	}
-
-	/**
-	 * Put one document
-	 */
-	create = this.insert;
 
 	/**
 	 * Database cursor
 	 */
-	public cursor(filter: Filter<SF<S>>) {
+	public cursor(filter: Filter<SF<S>>): Cursor<SF<S>> {
 		return this._datastore.cursor(filter);
 	}
 
@@ -70,11 +65,6 @@ export class Operations<S extends BaseSchema> {
 		}
 		return cursor.exec();
 	}
-
-	/**
-	 * Find documents that meets a specified criteria
-	 */
-	find = this.read;
 
 	/**
 	 * Update many documents that meets the specified criteria
@@ -145,6 +135,15 @@ export class Operations<S extends BaseSchema> {
 		filter = fixDeep(filter || {});
 		return await this._datastore.count(filter);
 	}
+
+	/**
+	 * Put one document
+	 */
+	create = this.insert;
+	/**
+	 * Find documents that meets a specified criteria
+	 */
+	find = this.read;
 }
 
 function fixDeep<T extends Filter<any>>(input: T): T {
