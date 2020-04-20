@@ -99,7 +99,7 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 
 	private async persistAllIndexes() {
 		const emitter = new PersistenceEvent();
-		await this.writeIndexes(emitter);
+		await this.rewriteIndexes(emitter);
 		const allKeys = Object.keys(this.db.indexes);
 		for (let i = 0; i < allKeys.length; i++) {
 			const fieldName = allKeys[i];
@@ -124,7 +124,7 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 
 	private async persistAllData() {
 		const emitter = new PersistenceEvent();
-		await this.writeData(emitter);
+		await this.rewriteData(emitter);
 		const allData = this.db.getAllData();
 		for (let i = 0; i < allData.length; i++) {
 			const doc = allData[i];
@@ -336,14 +336,14 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 		}
 	}
 
-	async writeIndexes(event: PersistenceEvent) {
+	async rewriteIndexes(event: PersistenceEvent) {
 		this._memoryIndexes = [];
 		event.on("writeLine", async (data) => {
 			this._memoryIndexes.push(data);
 		});
 	}
 
-	async writeData(event: PersistenceEvent) {
+	async rewriteData(event: PersistenceEvent) {
 		this._memoryData = [];
 		event.on("writeLine", async (data) => {
 			this._memoryData.push(data);

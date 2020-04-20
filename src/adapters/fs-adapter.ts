@@ -333,13 +333,13 @@ export class FS_Persistence_Adapter extends Persistence {
 		await this.readFileByLine(event, this.ref);
 	}
 
-	async writeIndexes(event: PersistenceEvent) {
+	async rewriteIndexes(event: PersistenceEvent) {
 		const filename = this.ref + this.indexesFilenameExtension;
 		await this.stopWatchingSingleFile(filename);
 		await this.writeFileByLine(event, filename);
 	}
 
-	async writeData(event: PersistenceEvent) {
+	async rewriteData(event: PersistenceEvent) {
 		await this.stopWatchingSingleFile(this.ref);
 		await this.writeFileByLine(event, this.ref);
 	}

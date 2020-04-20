@@ -46,7 +46,7 @@ class Memory_Persistence_Adapter extends Base {
 	 * also a callback should be provided for the end of the database is reached
 	 * the on.end callback would be utilized for example for closing a database, a connection, a file ...etc
 	 */
-	async writeIndexes(event: PersistenceEvent) {
+	async rewriteIndexes(event: PersistenceEvent) {
 		this._memoryIndexes = [];
 		event.on("writeLine", async (data) => {
 			this._memoryIndexes.push(data);
@@ -56,7 +56,7 @@ class Memory_Persistence_Adapter extends Base {
 			// finished with the last line of the database
 		});
 	}
-	async writeData(event: PersistenceEvent) {
+	async rewriteData(event: PersistenceEvent) {
 		this._memoryData = [];
 		event.on("writeLine", async (data) => {
 			this._memoryData.push(data);
