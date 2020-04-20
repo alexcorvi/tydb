@@ -29,6 +29,10 @@ export class Database<Schema extends BaseSchema> extends Operations<Schema> {
 		}
 	}
 
+	async reload() {
+		await this._database.loadDatabase();
+	}
+
 	async compact() {
 		await this._database.persistence.compactDatafile();
 	}
