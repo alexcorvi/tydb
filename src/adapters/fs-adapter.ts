@@ -1,7 +1,14 @@
 import { Persistence, PersistenceEvent } from "../core/persistence";
 import { FSWatcher, watch } from "chokidar";
 import * as fs from "fs";
-import { appendFile, exists, readFile, rename, unlink, writeFile } from "fs";
+import {
+	appendFile,
+	exists,
+	readFile,
+	rename,
+	unlink,
+	writeFile
+	} from "fs";
 import { lock, unlock } from "lockfile";
 import Q from "p-queue";
 import * as path from "path";
@@ -159,7 +166,7 @@ const _storage = {
 		});
 	},
 
-	readByLine: async function (
+	readByLine: function (
 		filename: string,
 		onLine: (line: string) => void,
 		onClose: () => void
