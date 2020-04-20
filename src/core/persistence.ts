@@ -249,10 +249,7 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 	 * Load the database
 	 * 1) Create all indexes
 	 * 2) Insert all data
-	 * 3) Compact the database
 	 * This means pulling data out of the data file or creating it if it doesn't exist
-	 * Also, all data is persisted right away, which has the effect of compacting the database file
-	 * This operation is very quick at startup for a big collection (60ms for ~10k docs)
 	 */
 	async loadDatabase() {
 		this.db.q.pause();
