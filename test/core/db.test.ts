@@ -13,7 +13,7 @@ should();
 const testDb = "workspace/test.db";
 const reloadTimeUpperBound = 80;
 // In ms, an upper bound for the reload time used to check createdAt and updatedAt
-describe("Database", () => {
+describe("Database", function () {
 	let d = new Datastore<any>({
 		ref: testDb,
 		persistence_adapter: FS_Persistence_Adapter,
@@ -27,6 +27,8 @@ describe("Database", () => {
 		await storage.mkdirp(path.dirname(testDb));
 		if (await storage.exists(testDb)) {
 			await promisify(fs.unlink)(testDb);
+		}
+		if (await storage.exists(testDb + ".idx.db")) {
 			await promisify(fs.unlink)(testDb + ".idx.db");
 		}
 		await d.loadDatabase();

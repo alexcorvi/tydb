@@ -19,7 +19,7 @@ describe("Persistence", () => {
 		persistence_adapter: FS_Persistence_Adapter,
 	});
 	beforeEach(async () => {
-		d = new Datastore<any>({
+		d = new Datastore({
 			ref: testDb,
 			persistence_adapter: FS_Persistence_Adapter,
 		});
@@ -27,6 +27,8 @@ describe("Persistence", () => {
 		await storage.mkdirp(path.dirname(testDb));
 		if (await storage.exists(testDb)) {
 			await promisify(fs.unlink)(testDb);
+		}
+		if (await storage.exists(testDb + ".idx.db")) {
 			await promisify(fs.unlink)(testDb + ".idx.db");
 		}
 		await d.loadDatabase();
