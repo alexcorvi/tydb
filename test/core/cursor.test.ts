@@ -20,11 +20,6 @@ describe("Cursor", () => {
 			ref: testDb,
 		});
 		d.ref.should.equal(testDb);
-		await storage.mkdirp(path.dirname(testDb));
-		if (await storage.exists(testDb)) {
-			await promisify(fs.unlink)(testDb);
-			await promisify(fs.unlink)(testDb + ".idx.db");
-		}
 		await d.loadDatabase();
 		d.getAllData().length.should.equal(0);
 	});
