@@ -27,13 +27,6 @@ export class Operations<S extends BaseSchema> {
 	}
 
 	/**
-	 * Database cursor
-	 */
-	public cursor(filter: Filter<SF<S>>): Cursor<SF<S>> {
-		return this._datastore.cursor(filter);
-	}
-
-	/**
 	 * Find documents that meets a specified criteria
 	 */
 	public async read({
