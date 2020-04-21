@@ -103,6 +103,18 @@ export class Operations<S extends BaseSchema> {
 	}
 
 	/**
+	 * Count documents that meets the specified criteria
+	 */
+	public async count({
+		filter,
+	}: {
+		filter?: Filter<SF<S>>;
+	} = {}): Promise<number> {
+		filter = fixDeep(filter || {});
+		return await this._datastore.count(filter);
+	}
+
+	/**
 	 * Delete many documents that meets the specified criteria
 	 *
 	 */
@@ -115,18 +127,6 @@ export class Operations<S extends BaseSchema> {
 	}): Promise<{ docs: SF<S>[]; number: number }> {
 		filter = fixDeep(filter || {});
 		return this._datastore.remove(filter, { multi });
-	}
-
-	/**
-	 * Count documents that meets the specified criteria
-	 */
-	public async count({
-		filter,
-	}: {
-		filter?: Filter<SF<S>>;
-	} = {}): Promise<number> {
-		filter = fixDeep(filter || {});
-		return await this._datastore.count(filter);
 	}
 
 	/**
