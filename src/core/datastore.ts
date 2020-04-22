@@ -3,7 +3,8 @@ import * as customUtils from "./customUtils";
 import { Index } from "./indexes";
 import * as model from "./model";
 import { Persistence } from "./persistence";
-import * as types from "@types";
+import * as types from "../types";
+import { BaseModel } from "../types/base-schema";
 import Q from "p-queue";
 
 interface EnsureIndexOptions {
@@ -13,13 +14,16 @@ interface EnsureIndexOptions {
 	expireAfterSeconds?: number;
 }
 
-export interface DataStoreOptions {
+export interface DataStoreOptions<G> {
 	ref: string;
 	afterSerialization?(line: string): string;
 	beforeDeserialization?(line: string): string;
 	corruptAlertThreshold?: number;
 	timestampData?: boolean;
 	persistence_adapter?: typeof Persistence;
+	model?: (new () => G) & {
+		new: (json: G) => G;
+	};
 }
 
 interface UpdateOptions {
@@ -28,7 +32,7 @@ interface UpdateOptions {
 }
 
 export class Datastore<
-	G extends Partial<types.BaseSchema> & { [key: string]: any }
+	G extends Partial<types.BaseModel> & { [key: string]: any }
 > {
 	ref: string = "db";
 	timestampData = false;
@@ -46,7 +50,12 @@ export class Datastore<
 
 	ttlIndexes: { [key: string]: number } = {};
 
-	constructor(options: DataStoreOptions) {
+	model: (new () => G) & {
+		new: (json: G) => G;
+	};
+
+	constructor(options: DataStoreOptions<G>) {
+		this.model = options.model || (BaseModel as any);
 		if (options.ref) {
 			this.ref = options.ref;
 		}
@@ -56,6 +65,7 @@ export class Datastore<
 		// Persistence handling
 		this.persistence = new PersistenceAdapter({
 			db: this,
+			model: options.model,
 			afterSerialization: options.afterSerialization,
 			beforeDeserialization: options.beforeDeserialization,
 			corruptAlertThreshold: options.corruptAlertThreshold || 0,
@@ -360,7 +370,7 @@ export class Datastore<
 		await this.persistence.persistByAppendNewData(
 			Array.isArray(preparedDoc) ? preparedDoc : [preparedDoc]
 		);
-		return model.deepCopy(preparedDoc);
+		return model.deepCopy(preparedDoc, this.model);
 	}
 
 	/**
@@ -385,7 +395,7 @@ export class Datastore<
 				preparedDoc.push(this.prepareDocumentForInsertion(doc));
 			});
 		} else {
-			preparedDoc = model.deepCopy(newDoc);
+			preparedDoc = model.deepCopy(newDoc, this.model);
 			if (preparedDoc._id === undefined) {
 				preparedDoc._id = this.createNewId();
 			}
@@ -508,7 +518,11 @@ export class Datastore<
 				) {
 					numReplaced++;
 					let createdAt = candidates[i].createdAt;
-					let modifiedDoc = model.modify(candidates[i], updateQuery);
+					let modifiedDoc = model.modify(
+						candidates[i],
+						updateQuery,
+						this.model
+					);
 					if (createdAt) {
 						modifiedDoc.createdAt = createdAt as any;
 					}
@@ -536,7 +550,7 @@ export class Datastore<
 
 			return {
 				number: updatedDocs.length,
-				docs: updatedDocs.map((x) => model.deepCopy(x)),
+				docs: updatedDocs.map((x) => model.deepCopy(x, this.model)),
 				upsert: false,
 			};
 		} else if (res.length === 0 && upsert) {
@@ -550,8 +564,9 @@ export class Datastore<
 				// updateQuery contains modifiers, use the find query as the base,
 				// strip it from all operators and update it according to updateQuery
 				toBeInserted = model.modify(
-					model.deepCopy(query, true),
-					updateQuery
+					model.deepCopy(query, this.model, true),
+					updateQuery,
+					this.model
 				);
 			}
 
@@ -600,7 +615,7 @@ export class Datastore<
 		candidates.forEach((d) => {
 			if (model.match(d, query) && (multi || numRemoved === 0)) {
 				numRemoved++;
-				removedFullDoc.push(model.deepCopy(d));
+				removedFullDoc.push(model.deepCopy(d, this.model));
 				removedDocs.push({ $$deleted: true, _id: d._id });
 				this.removeFromIndexes(d);
 			}

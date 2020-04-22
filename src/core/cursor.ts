@@ -1,11 +1,11 @@
 import { Datastore } from "./datastore";
 import * as model from "./model";
-import { BaseSchema, SchemaKeyProjection, SchemaKeySort } from "@types";
+import { BaseModel, SchemaKeyProjection, SchemaKeySort } from "../types";
 
 /**
  * Create a new cursor for this collection
  */
-export class Cursor<G extends Partial<BaseSchema>> {
+export class Cursor<G extends { _id?: string }> {
 	private db: Datastore<G>;
 	private query: { [key: string]: any };
 
@@ -91,14 +91,14 @@ export class Cursor<G extends Partial<BaseSchema>> {
 						delete toPush.$set[k];
 					}
 				});
-				toPush = model.modify({}, toPush);
+				toPush = model.modify({} as any, toPush, this.db.model);
 			} else {
 				// omit-type projection
 				toPush = { $unset: {} };
 				keys.forEach((k) => {
 					toPush.$unset[k] = true;
 				});
-				toPush = model.modify(candidate, toPush);
+				toPush = model.modify(candidate, toPush, this.db.model);
 			}
 			if (keepId) {
 				toPush._id = candidate._id;
@@ -192,7 +192,7 @@ export class Cursor<G extends Partial<BaseSchema>> {
 		const originalsArr = await this._exec();
 		const res: G[] = [];
 		for (let index = 0; index < originalsArr.length; index++) {
-			res.push(model.deepCopy(originalsArr[index]));
+			res.push(model.deepCopy(originalsArr[index], this.db.model));
 		}
 		return res;
 	}

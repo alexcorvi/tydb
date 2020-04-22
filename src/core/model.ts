@@ -64,7 +64,7 @@ function checkObject(obj: Value) {
  * Accepted primitive types: Number, String, Boolean, Date, null
  * Accepted secondary types: Objects, Arrays
  */
-function serialize(obj: Value) {
+function serialize<T>(obj: T) {
 	var res;
 	res = JSON.stringify(obj, function (this: any, k, v) {
 		checkKey(k, v);
@@ -114,7 +114,13 @@ function deserialize(rawData: string) {
  * The optional strictKeys flag (defaulting to false) indicates whether to copy everything or only fields
  * where the keys are valid, i.e. don't begin with $ and don't contain a .
  */
-function deepCopy<T>(obj: T, strictKeys?: boolean): T {
+function deepCopy<T>(
+	obj: T,
+	model: (new () => any) & {
+		new: (json: any) => any;
+	},
+	strictKeys?: boolean
+): T {
 	let res: Value = undefined;
 	if (
 		typeof obj === "boolean" ||
@@ -128,7 +134,9 @@ function deepCopy<T>(obj: T, strictKeys?: boolean): T {
 
 	if (Array.isArray(obj)) {
 		res = [];
-		obj.forEach((o) => (res as Value[]).push(deepCopy(o, strictKeys)));
+		obj.forEach((o) =>
+			(res as Value[]).push(deepCopy(o, model, strictKeys))
+		);
 		return res as any;
 	}
 
@@ -138,11 +146,16 @@ function deepCopy<T>(obj: T, strictKeys?: boolean): T {
 			if (!strictKeys || (k[0] !== "$" && k.indexOf(".") === -1)) {
 				(res as keyedObject)[k] = deepCopy(
 					((obj as unknown) as keyedObject)[k],
+					model,
 					strictKeys
 				);
 			}
 		});
-		return res as any;
+		if (res.hasOwnProperty("_id")) {
+			return model.new(res);
+		} else {
+			return res as any;
+		}
 	}
 
 	return JSON.parse(JSON.stringify({ temp: obj })).temp;
@@ -551,7 +564,13 @@ Object.keys(lastStepModifierFunctions).forEach(function (modifier) {
 /**
  * Modify a DB object according to an update query
  */
-function modify<G extends { _id?: string }>(obj: G, updateQuery: any): G {
+function modify<G extends { _id?: string }>(
+	obj: G,
+	updateQuery: any,
+	model: (new () => G) & {
+		new: (json: G) => G;
+	}
+): G {
 	var keys = Object.keys(updateQuery);
 	let firstChars = keys.map((x) => x.charAt(0));
 	let dollarFirstChars = firstChars.filter((x) => x === "$");
@@ -574,12 +593,12 @@ function modify<G extends { _id?: string }>(obj: G, updateQuery: any): G {
 
 	if (dollarFirstChars.length === 0) {
 		// Simply replace the object with the update query contents
-		newDoc = deepCopy(updateQuery);
+		newDoc = deepCopy(updateQuery, model);
 		newDoc._id = obj._id;
 	} else {
 		// Apply modifiers
 		let modifiers = Array.from(new Set(keys));
-		newDoc = deepCopy(obj);
+		newDoc = deepCopy(obj, model);
 		modifiers.forEach(function (modifier) {
 			let modArgument = (updateQuery as keyedObjectG<keyedObject>)[
 				modifier

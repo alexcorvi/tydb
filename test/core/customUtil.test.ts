@@ -1,4 +1,4 @@
-import { customUtils } from "@core";
+import { customUtils } from "../../src/core";
 import { should, use } from "chai";
 import * as asPromised from "chai-as-promised";
 import * as _ from "underscore";

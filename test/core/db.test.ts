@@ -1,5 +1,6 @@
 import { FS_Persistence_Adapter, storage } from "../../src/adapters/fs-adapter";
-import { Datastore, model } from "@core";
+import { Datastore, model } from "../../src/core";
+import { BaseModel } from "../../src/types/base-schema";
 import { assert, expect, should, use } from "chai";
 import * as asPromised from "chai-as-promised";
 import * as fs from "fs";
@@ -19,7 +20,7 @@ describe("Database", function () {
 		persistence_adapter: FS_Persistence_Adapter,
 	});
 	beforeEach(async () => {
-		d = new Datastore({
+		d = new Datastore<any>({
 			ref: testDb,
 			persistence_adapter: FS_Persistence_Adapter,
 		});
@@ -219,7 +220,7 @@ describe("Database", function () {
 		it("CreatedAt field is added and persisted", async () => {
 			{
 				const newDoc = { hello: "world" };
-				d = new Datastore({
+				d = new Datastore<any>({
 					ref: testDb,
 					timestampData: true,
 					persistence_adapter: FS_Persistence_Adapter,
@@ -284,7 +285,7 @@ describe("Database", function () {
 			};
 
 			const beginning = Date.now();
-			d = new Datastore({
+			d = new Datastore<any>({
 				ref: testDb,
 				timestampData: true,
 				persistence_adapter: FS_Persistence_Adapter,
@@ -319,7 +320,7 @@ describe("Database", function () {
 			};
 
 			const beginning = Date.now();
-			d = new Datastore({
+			d = new Datastore<any>({
 				ref: testDb,
 				timestampData: true,
 				persistence_adapter: FS_Persistence_Adapter,
@@ -540,7 +541,7 @@ describe("Database", function () {
 								.length.should.equal(2);
 							assert.isNull(datafileContents.match(/world/));
 							// New datastore on same datafile is empty
-							var d2 = new Datastore({
+							var d2 = new Datastore<any>({
 								ref: testDb,
 								persistence_adapter: FS_Persistence_Adapter,
 							});
@@ -856,7 +857,7 @@ describe("Database", function () {
 		});
 		it("Update the updatedAt field", (done) => {
 			const beginning = Date.now();
-			d = new Datastore({
+			d = new Datastore<any>({
 				ref: testDb,
 				timestampData: true,
 				persistence_adapter: FS_Persistence_Adapter,
@@ -2769,7 +2770,7 @@ describe("Database", function () {
 				var persDb = "workspace/persistIndexes.db";
 				fs.unlinkSync(persDb);
 				fs.unlinkSync(persDb + ".idx.db");
-				let db = new Datastore({
+				let db = new Datastore<any>({
 					ref: persDb,
 					persistence_adapter: FS_Persistence_Adapter,
 				});
@@ -2799,7 +2800,7 @@ describe("Database", function () {
 										"planet"
 									);
 									// After a reload the indexes are recreated
-									db = new Datastore({
+									db = new Datastore<any>({
 										ref: persDb,
 										persistence_adapter: FS_Persistence_Adapter,
 									});

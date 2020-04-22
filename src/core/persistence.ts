@@ -2,7 +2,7 @@ import * as customUtils from "./customUtils";
 import { Datastore } from "./datastore";
 import { Index } from "./indexes";
 import * as model from "./model";
-import { BaseSchema } from "@types";
+import { BaseModel } from "../types";
 
 type PersistenceEventCallback = (message: string) => Promise<void>;
 
@@ -35,26 +35,35 @@ export class PersistenceEvent {
 	}
 }
 
-interface PersistenceOptions<G extends Partial<BaseSchema>> {
+interface PersistenceOptions<G extends Partial<BaseModel>> {
 	db: Datastore<G>;
 	afterSerialization?: (raw: string) => string;
 	beforeDeserialization?: (encrypted: string) => string;
 	corruptAlertThreshold?: number;
+	model?: (new () => G) & {
+		new: (json: G) => G;
+	};
 }
 
 /**
  * Create a new Persistence object for database options.db
  */
-export class Persistence<G extends Partial<BaseSchema> = any> {
+export class Persistence<G extends Partial<BaseModel> = any> {
 	db: Datastore<G>;
 	ref: string = "";
 	corruptAlertThreshold: number = 0.1;
 	afterSerialization = (s: string) => s;
 	beforeDeserialization = (s: string) => s;
 	autocompactionIntervalId: NodeJS.Timeout | undefined;
+	private _model:
+		| ((new () => G) & {
+				new: (json: G) => G;
+		  })
+		| undefined;
 	protected _memoryIndexes: string[] = [];
 	protected _memoryData: string[] = [];
 	constructor(options: PersistenceOptions<G>) {
+		this._model = options.model;
 		this.db = options.db;
 		this.ref = this.db.ref;
 		this.corruptAlertThreshold =
@@ -197,6 +206,9 @@ export class Persistence<G extends Partial<BaseSchema> = any> {
 		let treatedLine: any;
 		try {
 			treatedLine = model.deserialize(this.beforeDeserialization(line));
+			if (this._model) {
+				treatedLine = this._model.new(treatedLine);
+			}
 		} catch (e) {
 			return {
 				type: "corrupt",

@@ -10,12 +10,7 @@
 		"pretty": true,
 		"strict": true,
 		"skipLibCheck": true,
-		"baseUrl": "./",
-		"sourceMap": true,
-		"paths": {
-			"@core": ["../src/core"],
-			"@types": ["../src/types"]
-		}
+		"sourceMap": true
 	},
 	"include": ["./**/*"],
 	"exclude": ["node_modules"]

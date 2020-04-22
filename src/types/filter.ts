@@ -131,6 +131,10 @@ export type SchemaKeyFilters<S> = Partial<
 >;
 export type Filter<S> = SchemaKeyFilters<S> | TopLevelQueryOperators<S>;
 
-export type SchemaKeySort<S> = Partial<{ [key in Keys<S>]: -1 | 0 | 1 }>;
+export type SchemaKeySort<S> = Partial<
+	{ [key in Keys<S>]: -1 | 1 } & { $deep: { [key: string]: -1 | 1 } }
+>;
 
-export type SchemaKeyProjection<S> = Partial<{ [key in Keys<S>]: 0 | 1 }>;
+export type SchemaKeyProjection<S> = Partial<
+	{ [key in Keys<S>]: 0 | 1 } & { $deep: { [key: string]: 0 | 1 } }
+>;

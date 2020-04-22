@@ -1,4 +1,4 @@
-import { BST, customUtils } from "@core";
+import { BST, customUtils } from "../../src/core";
 import { assert, should } from "chai";
 import * as _ from "underscore";
 should();

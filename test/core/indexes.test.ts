@@ -1,4 +1,4 @@
-import { Index } from "@core";
+import { Index } from "../../src/core";
 import { assert, should, use } from "chai";
 import * as asPromised from "chai-as-promised";
 import * as _ from "underscore";

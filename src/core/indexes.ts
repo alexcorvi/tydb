@@ -1,6 +1,6 @@
 import { AVLTree } from "./avl";
 import * as model from "./model";
-import { BaseSchema } from "@types";
+import { BaseModel } from "../types";
 
 interface Pair<Doc> {
 	newDoc: Doc;
@@ -47,7 +47,7 @@ function uniqueProjectedKeys<Key>(key: Key[]): (Key | string)[] {
 	);
 }
 
-export class Index<Key, Doc extends Partial<BaseSchema>> {
+export class Index<Key, Doc extends Partial<BaseModel>> {
 	fieldName: string = "";
 	unique: boolean = false;
 	sparse: boolean = false;

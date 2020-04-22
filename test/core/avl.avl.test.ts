@@ -1,4 +1,4 @@
-import { AVLTree, customUtils, Node } from "@core";
+import { AVLTree, customUtils, Node } from "../../src/core";
 import { assert, should } from "chai";
 import * as _ from "underscore";
 should();

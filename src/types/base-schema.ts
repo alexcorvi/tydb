@@ -1,8 +1,20 @@
-export interface BaseSchema {
-	_id?: string;
+import { customUtils } from "../core";
+export class BaseModel<T = any> {
+	_id: string = customUtils.uid();
 	updatedAt?: Date;
 	createdAt?: Date;
+	static new<T>(this: new () => T, data: Partial<NFP<T>>): T {
+		const instance = new this();
+		const keys = Object.keys(data);
+		for (let i = 0; i < keys.length; i++) {
+			const key = keys[i] as keyof T;
+			(instance as any)[key] = (data as any)[key];
+		}
+		return instance;
+	}
 }
 
-export type SF<S> = S & BaseSchema & { _id: string };
-export type SP<S> = S & Partial<BaseSchema>;
+type NFPN<T> = {
+	[K in keyof T]: T[K] extends Function ? never : K;
+}[keyof T];
+export type NFP<T> = Pick<T, NFPN<T>>;

@@ -1,5 +1,5 @@
 import { FS_Persistence_Adapter, storage } from "../../src/adapters/fs-adapter";
-import { customUtils, Datastore, model, Persistence } from "@core";
+import { customUtils, Datastore, model, Persistence } from "../../src/core";
 import { assert, expect, should, use } from "chai";
 import * as asPromised from "chai-as-promised";
 import * as child_process from "child_process";
