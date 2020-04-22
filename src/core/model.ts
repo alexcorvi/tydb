@@ -1026,6 +1026,12 @@ function matchQueryPart(
 
 		// If not, treat it as an array of { obj, query } where there needs to be at least one match
 		for (let i = 0; i < objValue.length; i += 1) {
+			// edge case: using $ne on array
+			if (queryValue["$ne"]) {
+				if (objValue.indexOf(queryValue["$ne"]) !== -1) {
+					return false;
+				}
+			}
 			if (matchQueryPart({ k: objValue[i] }, "k", queryValue)) {
 				return true;
 			} // k here could be any string
@@ -1058,7 +1064,6 @@ function matchQueryPart(
 				if (!comparisonFunctions[keys[i]]) {
 					throw new Error("Unknown comparison function " + keys[i]);
 				}
-
 				if (
 					!comparisonFunctions[keys[i]](objValue, queryValue[keys[i]])
 				) {
