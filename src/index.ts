@@ -155,10 +155,12 @@ export class Database<S extends BaseModel<S>> {
 		multi,
 	}: {
 		filter: Filter<NFP<S>>;
-		multi: boolean;
+		multi?: boolean;
 	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
-		const res = await this._datastore.remove(filter, { multi });
+		const res = await this._datastore.remove(filter, {
+			multi: multi || false,
+		});
 		return res;
 	}
 
