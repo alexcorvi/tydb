@@ -1032,6 +1032,14 @@ function matchQueryPart(
 					return false;
 				}
 			}
+			if (Array.isArray(queryValue["$nin"])) {
+				const intersection = queryValue["$nin"].filter(
+					(value) => -1 !== objValue.indexOf(value)
+				);
+				if (intersection.length) {
+					return false;
+				}
+			}
 			if (matchQueryPart({ k: objValue[i] }, "k", queryValue)) {
 				return true;
 			} // k here could be any string
