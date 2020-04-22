@@ -124,16 +124,15 @@ export class Database<S extends BaseModel<S>> {
 	 */
 	public async upsert({
 		filter,
-		update,
-		multi,
+		doc,
 	}: {
 		filter: Filter<NFP<S>>;
-		update: UpdateOperators<NFP<S>>;
-		multi?: boolean;
-	}): Promise<{ docs: S[]; number: number }> {
+		doc: S;
+	}): Promise<{ docs: S[]; number: number; upsert: boolean }> {
 		filter = fixDeep(filter || {});
-		const res = await this._datastore.update(filter, update, {
-			multi,
+		delete doc._id; // we need to remove the ID, so it doesn't throw an error if the document is found
+		const res = await this._datastore.update(filter, doc, {
+			multi: false,
 			upsert: true,
 		});
 		return res;
