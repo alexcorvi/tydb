@@ -204,7 +204,12 @@ describe("Actions", async () => {
 					expect(doc2.arr.length).to.be.equal(0);
 				}
 			});
-			it.skip("Modeling", async () => {});
+			it("Modeling", async () => {
+				const res = await db.insert([Employee.new({ male: false })]);
+				const doc = res.docs[0];
+				expect(doc.isFemale()).to.be.eq(true);
+				expect(doc.female).to.be.eq(true);
+			});
 		});
 
 		describe("Read", () => {
@@ -415,37 +420,271 @@ describe("Actions", async () => {
 		});
 
 		describe("Update", () => {
-			it.skip("Basic filter", () => {});
-			it.skip("Deep filter", () => {});
-			it.skip("with no filter", () => {});
-			it.skip("Using direct update", () => {});
-			it.skip("Using update operators", () => {});
-			it.skip("Multi update", () => {});
-			it.skip("Test signature", () => {});
+			beforeEach(async () => {
+				await db.insert([
+					Employee.new({
+						name: "alex",
+						age: 28,
+						arr: [],
+						male: true,
+						d: { a: { x: 0 } },
+					}),
+					Employee.new({
+						name: "dina",
+						age: 27,
+						arr: [],
+						male: false,
+						d: { a: { x: -1 } },
+					}),
+				]);
+			});
+			it("Basic filter", async () => {
+				await db.update({
+					filter: {
+						age: 28,
+					},
+					update: {
+						$set: {
+							name: "aly",
+						},
+					},
+				});
+				const afterUpdate = await db.find({ filter: { age: 28 } });
+				expect(afterUpdate.length).to.be.eq(1);
+				expect(afterUpdate[0].name).to.be.eq("aly");
+			});
+			it("Deep filter", async () => {
+				await db.update({
+					filter: {
+						$deep: {
+							"d.a.x": {
+								$eq: 0,
+							},
+						},
+					},
+					update: {
+						$set: {
+							name: "name2",
+						},
+					},
+				});
+				const afterUpdate = await db.find({ filter: { age: 28 } });
+				expect(afterUpdate.length).to.be.eq(1);
+				expect(afterUpdate[0].name).to.be.eq("name2");
+			});
+			it("with no filter", async () => {
+				await db.update({
+					filter: {},
+					update: {
+						$set: {
+							name: "all",
+						},
+					},
+				});
+				const afterUpdate = await db.find({ filter: { name: "all" } });
+				expect(afterUpdate.length).to.be.eq(1);
+			});
+			it("Multi update", async () => {
+				await db.update({
+					filter: {},
+					update: {
+						$set: {
+							name: "all",
+						},
+					},
+					multi: true,
+				});
+				const afterUpdate = await db.find({ filter: { name: "all" } });
+				expect(afterUpdate.length).to.be.eq(2);
+			});
+			it("Test signature & modeling", async () => {
+				{
+					const res = await db.update({
+						filter: {},
+						update: {
+							$set: {
+								male: true,
+							},
+						},
+						multi: true,
+					});
+					expect(res.number).eq(2);
+					expect(res.docs.length).eq(2);
+					expect(res.docs[0].female).eq(false);
+					expect(res.docs[0].isFemale()).eq(false);
+					expect(res.docs[1].female).eq(false);
+					expect(res.docs[1].isFemale()).eq(false);
+				}
+				{
+					const res = await db.update({
+						filter: {
+							female: false,
+						},
+						update: {
+							$set: {
+								male: false,
+							},
+						},
+						multi: true,
+					});
+					expect(res.number).eq(2);
+					expect(res.docs.length).eq(2);
+					expect(res.docs[0].female).eq(true);
+					expect(res.docs[0].isFemale()).eq(true);
+					expect(res.docs[1].female).eq(true);
+					expect(res.docs[1].isFemale()).eq(true);
+				}
+			});
 		});
 
 		describe("Upserting", () => {
-			it.skip("Basic filter", () => {});
-			it.skip("Deep filter", () => {});
-			it.skip("with no filter", () => {});
-			it.skip("Using direct update", () => {});
-			it.skip("Using update operators", () => {});
-			it.skip("Multi update", () => {});
-			it.skip("Test signature", () => {});
+			beforeEach(async () => {
+				await db.insert([
+					Employee.new({
+						name: "alex",
+						age: 27,
+						arr: [],
+						male: true,
+						d: { a: { x: 0 } },
+					}),
+				]);
+			});
+			it("When the document is found", async () => {
+				const res = await db.upsert({
+					filter: { name: "alex" },
+					doc: Employee.new({ name: "aly" }),
+				});
+				expect(res.upsert).eq(false);
+				expect(res.number).eq(1);
+				expect(res.docs.length).eq(1);
+				expect(res.docs[0].name).eq("aly");
+				const find = await db.find({ filter: { name: "aly" } });
+				expect(find.length).eq(1);
+				const findAll = await db.find({ filter: {} });
+				expect(findAll.length).eq(1); // no insertion occurred
+			});
+			it("When the document is not found", async () => {
+				const res = await db.upsert({
+					filter: { name: "david" },
+					doc: Employee.new({ name: "aly" }),
+				});
+				expect(res.upsert).eq(true);
+				expect(res.number).eq(1);
+				expect(res.docs.length).eq(1);
+				expect(res.docs[0].name).eq("aly");
+				const find = await db.find({ filter: { name: "aly" } });
+				expect(find.length).eq(1);
+				const findAll = await db.find({ filter: {} });
+				expect(findAll.length).eq(2); // insertion of a new document occurred
+			});
 		});
 
 		describe("Counting", () => {
-			it.skip("Basic filter", () => {});
-			it.skip("Deep filter", () => {});
-			it.skip("with no filter", () => {});
+			beforeEach(async () => {
+				await db.insert([
+					Employee.new({
+						name: "alex",
+						age: 1,
+						arr: [],
+						male: true,
+						d: { a: { x: 1 } },
+					}),
+					Employee.new({
+						name: "dina",
+						age: 2,
+						arr: [],
+						male: false,
+						d: { a: { x: 1 } },
+					}),
+					Employee.new({
+						name: "david",
+						age: 2,
+						arr: [],
+						male: false,
+						d: { a: { x: 0 } },
+					}),
+				]);
+			});
+			it("Basic filter", async () => {
+				expect(await db.count({ age: 1 })).eq(1);
+				expect(await db.count({ age: 2 })).eq(2);
+			});
+			it("Deep filter", async () => {
+				expect(await db.count({ $deep: { "d.a.x": { $eq: 0 } } })).eq(
+					1
+				);
+				expect(await db.count({ $deep: { "d.a.x": { $eq: 1 } } })).eq(
+					2
+				);
+			});
+			it("with no filter", async () => {
+				expect(await db.count()).eq(3);
+				expect(await db.count({})).eq(3);
+			});
 		});
 
 		describe("Delete", () => {
-			it.skip("Basic filter", () => {});
-			it.skip("Deep filter", () => {});
-			it.skip("with no filter", () => {});
-			it.skip("multi delete", () => {});
-			it.skip("Test signature", () => {});
+			beforeEach(async () => {
+				await db.insert([
+					Employee.new({
+						name: "alex",
+						age: 1,
+						arr: [],
+						male: true,
+						d: { a: { x: 1 } },
+					}),
+					Employee.new({
+						name: "dina",
+						age: 2,
+						arr: [],
+						male: false,
+						d: { a: { x: 1 } },
+					}),
+					Employee.new({
+						name: "david",
+						age: 2,
+						arr: [],
+						male: true,
+						d: { a: { x: 0 } },
+					}),
+				]);
+			});
+			it("Basic filter", async () => {
+				const res = await db.delete({ filter: { female: true } });
+				expect(res.number).eq(1);
+				expect(res.docs[0].name).eq("dina");
+				expect(res.docs[0].female).eq(true);
+				expect(res.docs[0].isFemale()).eq(true);
+				expect(await db.count({ female: true })).eq(0);
+				expect(await db.count({ male: false })).eq(0);
+				expect(await db.count({ name: "dina" })).eq(0);
+			});
+			it("Deep filter", async () => {
+				const res = await db.delete({
+					filter: { $deep: { "d.a.x": { $eq: 1 } } },
+				});
+				expect(res.number).eq(1);
+				expect(await db.count({ $deep: { "d.a.x": { $eq: 1 } } })).eq(
+					1 // one is left, since this is not a multi delete
+				);
+				expect(await db.count()).eq(2);
+			});
+			it("with no filter", async () => {
+				const res = await db.delete({ filter: {} });
+				expect(res.number).eq(1);
+				expect(await db.count()).eq(2);
+			});
+			it("multi delete", async () => {
+				const res = await db.delete({
+					filter: { $deep: { "d.a.x": { $eq: 1 } } },
+					multi: true,
+				});
+				expect(res.number).eq(2);
+				expect(await db.count({ $deep: { "d.a.x": { $eq: 1 } } })).eq(
+					0 // no one is left, since this is a multi delete
+				);
+				expect(await db.count()).eq(1);
+			});
 		});
 	});
 });
