@@ -81,7 +81,7 @@ export interface UpdateOperators<S> {
 	 */
 	$currentDate?: UpdateOperatorsOnSchema<
 		S,
-		boolean | { $type: "timestamp" | "date" }
+		true | { $type: "timestamp" | "date" }
 	>;
 	/**
 	 * Adds elements to an array only if they do not already exist in the set.
