@@ -126,7 +126,11 @@ export interface TopLevelQueryOperators<S> {
 
 export type SchemaKeyFilters<S> = Partial<
 	{
-		[key in Keys<S>]: FieldLevelQueryOperators<S[key]> | S[key];
+		[key in Keys<S>]:
+			| (S[key] extends Array<any>
+					? FieldLevelQueryOperators<S[key][0]>
+					: FieldLevelQueryOperators<S[key]>)
+			| S[key];
 	}
 >;
 export type Filter<S> = SchemaKeyFilters<S> | TopLevelQueryOperators<S>;
