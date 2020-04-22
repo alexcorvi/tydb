@@ -59,7 +59,7 @@ describe("Actions", async () => {
 		});
 	});
 
-	describe.only("Operations", () => {
+	describe("Operations", () => {
 		let dbName = "workspace/integration.db";
 
 		let db = new Database<Employee>({
