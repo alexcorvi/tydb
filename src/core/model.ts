@@ -780,7 +780,7 @@ const comparisonFunctions: ComparisonGroup = {};
  * Arithmetic and comparison operators
  */
 comparisonFunctions.$eq = function (a, b) {
-	return a === b;
+	return areThingsEqual(a, b);
 };
 
 comparisonFunctions.$lt = function (a, b) {
