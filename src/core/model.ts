@@ -779,6 +779,11 @@ const comparisonFunctions: ComparisonGroup = {};
 /**
  * Arithmetic and comparison operators
  */
+
+comparisonFunctions.$not = function (a, b) {
+	return !match({ k: a }, { k: b });
+};
+
 comparisonFunctions.$eq = function (a, b) {
 	return areThingsEqual(a, b);
 };
@@ -945,13 +950,6 @@ logicalOperators.$nor = function (obj, query) {
 	}
 
 	return true;
-};
-
-/**
- * Inverted match of the query
- */
-logicalOperators.$not = function (obj, query) {
-	return !match(obj, query);
 };
 
 /**
