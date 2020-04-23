@@ -780,6 +780,25 @@ const comparisonFunctions: ComparisonGroup = {};
  * Arithmetic and comparison operators
  */
 
+comparisonFunctions.$type = function (a, b: any) {
+	if (["number", "boolean", "string", "undefined"].indexOf(b) > -1) {
+		return typeof a === b;
+	} else if (b === "array") {
+		return Array.isArray(a);
+	} else if (b === "null") {
+		return a === null;
+	} else if (b === "date") {
+		return a instanceof Date;
+	} else if (b === "object") {
+		return (
+			typeof a === "object" &&
+			!(a instanceof Date) &&
+			!(a === null) &&
+			!Array.isArray(a)
+		);
+	} else return false;
+};
+
 comparisonFunctions.$not = function (a, b) {
 	return !match({ k: a }, { k: b });
 };

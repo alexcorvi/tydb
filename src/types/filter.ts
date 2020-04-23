@@ -1,6 +1,16 @@
 import { Keys, Partial } from "./common";
 
 export interface FieldLevelQueryOperators<V> {
+	$type?:
+		| "string"
+		| "number"
+		| "boolean"
+		| "undefined"
+		| "array"
+		| "null"
+		| "date"
+		| "object";
+
 	/**
 	 * Specifies equality condition. The $eq operator matches documents where the value of a field equals the specified value.
 	 * {field: { $eq: <value> }}
