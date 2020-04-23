@@ -63,7 +63,7 @@ export interface AnyFieldLevelQueryOperators<V> {
 	 * $not performs a logical NOT operation on the specified <operator-expression> and selects the documents that do not match the <operator-expression>. This includes documents that do not contain the field.
 	 * { field: { $not: { <operator-expression> } } }
 	 */
-	$not?: SchemaKeyFilters<V>;
+	$not?: AnyFieldLevelQueryOperators<V>;
 
 	/**
 	 * When <boolean> is true, $exists matches the documents that contain the field, including documents where the field value is null. If <boolean> is false, the query returns only the documents that do not contain the field.
@@ -102,6 +102,12 @@ export interface ArrayFieldLevelQueryOperators<V>
 	 * The $size operator matches any array with the number of elements specified by the argument. For example:{ field: { $size: 2 } }
 	 */
 	$size?: number;
+
+	/**
+	 * $not performs a logical NOT operation on the specified <operator-expression> and selects the documents that do not match the <operator-expression>. This includes documents that do not contain the field.
+	 * { field: { $not: { <operator-expression> } } }
+	 */
+	$not?: ArrayFieldLevelQueryOperators<V>;
 }
 
 export interface TopLevelQueryOperators<S> {
