@@ -823,6 +823,18 @@ comparisonFunctions.$gte = function (a, b) {
 	return areComparable(a, b) && a >= b;
 };
 
+comparisonFunctions.$mod = function (a: any, b: any) {
+	if (!Array.isArray(b)) {
+		throw new Error("malformed mod, must be supplied with an array");
+	}
+	if (b.length !== 2) {
+		throw new Error(
+			"malformed mod, array length must be exactly two, a divisor and a remainder"
+		);
+	}
+	return a % b[0] === b[1];
+};
+
 comparisonFunctions.$ne = function (a, b) {
 	if (a === undefined) {
 		return true;
