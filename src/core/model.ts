@@ -799,6 +799,22 @@ comparisonFunctions.$type = function (a, b: any) {
 	} else return false;
 };
 
+comparisonFunctions.$all = function (a, b) {
+	if (!Array.isArray(a)) {
+		throw new Error("$all must be applied on fields of type array");
+	}
+	if (!Array.isArray(b)) {
+		throw new Error("$all must be supplied with argument of type array");
+	}
+	for (let i = 0; i < b.length; i++) {
+		const elementInArgument = b[i];
+		if (a.indexOf(elementInArgument) === -1) {
+			return false;
+		}
+	}
+	return true;
+};
+
 comparisonFunctions.$not = function (a, b) {
 	return !match({ k: a }, { k: b });
 };
@@ -1026,7 +1042,25 @@ function match(obj: any, query: any): boolean {
 				return false;
 			}
 		} else {
-			if (!matchQueryPart(obj, queryKey, queryValue)) {
+			// edge case: $all
+			if (queryValue["$all"]) {
+				if (
+					!matchQueryPart(
+						obj,
+						queryKey,
+						{ $all: queryValue["$all"] },
+						true
+					)
+				) {
+					return false;
+				} else {
+					delete queryValue["$all"];
+				}
+			}
+			if (
+				Object.keys(queryValue).length &&
+				!matchQueryPart(obj, queryKey, queryValue)
+			) {
 				return false;
 			}
 		}

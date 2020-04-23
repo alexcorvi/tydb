@@ -6,7 +6,7 @@ import {
 	SchemaKeyProjection,
 	SchemaKeySort,
 	UpdateOperators,
-	FieldLevelQueryOperators,
+	AnyFieldLevelQueryOperators,
 } from "./types"; // for some reason using @types will disable some type checks
 
 interface DatabaseConfigurations<S extends BaseModel<S>> {
@@ -201,13 +201,13 @@ function fix$Pull$eq<S>(updateQuery: UpdateOperators<S>) {
 		Object.keys(updateQuery.$pull).forEach((key) => {
 			if (
 				(updateQuery.$pull as {
-					[key: string]: FieldLevelQueryOperators<any>;
+					[key: string]: AnyFieldLevelQueryOperators<any>;
 				})[key].$eq
 			) {
 				(updateQuery.$pull as { [key: string]: any })[
 					key
 				] = (updateQuery.$pull as {
-					[key: string]: FieldLevelQueryOperators<any>;
+					[key: string]: AnyFieldLevelQueryOperators<any>;
 				})[key].$eq;
 			}
 		});
