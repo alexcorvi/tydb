@@ -917,14 +917,29 @@ logicalOperators.$or = function (obj, query) {
  * Match all of the subqueries
  */
 logicalOperators.$and = function (obj, query) {
-	var i;
-
 	if (!Array.isArray(query)) {
 		throw new Error("$and operator used without an array");
 	}
 
-	for (i = 0; i < query.length; i += 1) {
+	for (let i = 0; i < query.length; i += 1) {
 		if (!match(obj, query[i])) {
+			return false;
+		}
+	}
+
+	return true;
+};
+
+/**
+ * Match non of the subqueries
+ */
+logicalOperators.$nor = function (obj, query) {
+	if (!Array.isArray(query)) {
+		throw new Error("$nor operator used without an array");
+	}
+
+	for (let i = 0; i < query.length; i += 1) {
+		if (match(obj, query[i])) {
 			return false;
 		}
 	}
