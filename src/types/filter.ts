@@ -1,6 +1,6 @@
 import { Keys, Partial } from "./common";
 
-export interface FieldLevelQueryOperators<V> {
+export interface AnyFieldLevelQueryOperators<V> {
 	$type?:
 		| "string"
 		| "number"
@@ -63,7 +63,7 @@ export interface FieldLevelQueryOperators<V> {
 	 * $not performs a logical NOT operation on the specified <operator-expression> and selects the documents that do not match the <operator-expression>. This includes documents that do not contain the field.
 	 * { field: { $not: { <operator-expression> } } }
 	 */
-	$not?: FieldLevelQueryOperators<V>;
+	$not?: SchemaKeyFilters<V>;
 
 	/**
 	 * When <boolean> is true, $exists matches the documents that contain the field, including documents where the field value is null. If <boolean> is false, the query returns only the documents that do not contain the field.
@@ -82,18 +82,21 @@ export interface FieldLevelQueryOperators<V> {
 	 * {field:{$regex: /pattern/<options>}}
 	 */
 	$regex?: RegExp;
+}
 
+export interface ArrayFieldLevelQueryOperators<V>
+	extends AnyFieldLevelQueryOperators<V> {
 	/**
 	 * The $all operator selects the documents where the value of a field is an array that contains all the specified elements.
 	 *{ field: { $all: [ <value1> , <value2> ... ] } }
 	 */
-	$all?: Array<any>;
+	$all?: Array<V>;
 
 	/**
 	 * The $elemMatch operator matches documents that contain an array field with at least one element that matches all the specified query criteria.
 	 * { <field>: { $elemMatch: { <query1>, <query2>, ... } } }
 	 */
-	$elemMatch?: FieldLevelQueryOperators<any>;
+	$elemMatch?: AnyFieldLevelQueryOperators<V>;
 
 	/**
 	 * The $size operator matches any array with the number of elements specified by the argument. For example:{ field: { $size: 2 } }
@@ -130,7 +133,7 @@ export interface TopLevelQueryOperators<S> {
 	 * {$deep: {"employee.address.street": {$eq: "Bedford Mount"}}}
 	 */
 	$deep?: {
-		[key: string]: FieldLevelQueryOperators<any>;
+		[key: string]: SchemaKeyFilters<any>;
 	};
 }
 
@@ -138,8 +141,8 @@ export type SchemaKeyFilters<S> = Partial<
 	{
 		[key in Keys<S>]:
 			| (S[key] extends Array<any>
-					? FieldLevelQueryOperators<S[key][0]>
-					: FieldLevelQueryOperators<S[key]>)
+					? ArrayFieldLevelQueryOperators<S[key][0]>
+					: AnyFieldLevelQueryOperators<S[key]>)
 			| S[key];
 	}
 >;
