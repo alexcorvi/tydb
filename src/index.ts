@@ -111,6 +111,9 @@ export class Database<S extends BaseModel<S>> {
 		if (update.$set) {
 			update.$set = fixDeep(update.$set);
 		}
+		if (update.$unset) {
+			update.$unset = fixDeep(update.$unset);
+		}
 		const res = await this._datastore.update(filter, update, {
 			multi,
 			upsert: false,
