@@ -529,6 +529,16 @@ const lastStepModifierFunctions: ModifierGroup = {
 			obj[field] = value;
 		}
 	},
+
+	$currentDate: function (obj: keyedObjectG<any>, field: string, value: any) {
+		if (value === true) {
+			obj[field] = new Date();
+		} else if (value.$type && value.$type === "timestamp") {
+			obj[field] = Date.now();
+		} else if (value.$type && value.$type === "date") {
+			obj[field] = new Date();
+		}
+	},
 };
 
 // Given its name, create the complete modifier function

@@ -1,5 +1,5 @@
 import { Keys, Partial } from "./common";
-import { FieldLevelQueryOperators } from "./filter";
+import { AnyFieldLevelQueryOperators } from "./filter";
 
 export interface UpdateOperatorsModifiers<S> {
 	/**
@@ -105,7 +105,7 @@ export interface UpdateOperators<S> {
 	 * Removes all array elements that match a specified query.
 	 * { $pull: { <field1>: <value|condition>, <field2>: <value|condition>, ... } }
 	 */
-	$pull?: UpdateOperatorsOnSchema<S, FieldLevelQueryOperators<any>>;
+	$pull?: UpdateOperatorsOnSchema<S, AnyFieldLevelQueryOperators<any>>;
 	/**
 	 * The $push operator appends a specified value to an array.
 	 * { $push: { <field1>: <value1>, ... } }

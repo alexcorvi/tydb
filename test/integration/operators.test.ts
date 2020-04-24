@@ -27,7 +27,7 @@ class Employee extends BaseModel<Employee> {
 	isFemale() {
 		return !this.male;
 	}
-
+	lastLogin: Date | undefined;
 	get female() {
 		return !this.male;
 	}
@@ -524,7 +524,46 @@ describe.only("Operators tests", () => {
 
 	describe("Update Operators", () => {
 		describe("Field update operators", () => {
-			it.skip("$currentDate", async () => {});
+			it.only("$currentDate", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$currentDate: {
+							lastLogin: true,
+						},
+					},
+				});
+				await db.update({
+					filter: { name: "dina" },
+					update: {
+						$currentDate: {
+							lastLogin: { $type: "date" },
+						},
+					},
+				});
+				await db.update({
+					filter: { name: "alex" },
+					update: {
+						$currentDate: {
+							lastLogin: { $type: "timestamp" },
+						},
+					},
+				});
+				expect(
+					(await db.find({ filter: { name: "john" } }))[0]
+						.lastLogin instanceof Date
+				).eq(true);
+
+				expect(
+					(await db.find({ filter: { name: "dina" } }))[0]
+						.lastLogin instanceof Date
+				).eq(true);
+
+				expect(
+					typeof (await db.find({ filter: { name: "alex" } }))[0]
+						.lastLogin === "number"
+				).eq(true);
+			});
 			it.skip("$inc", async () => {});
 			it.skip("$min", async () => {});
 			it.skip("$max", async () => {});
