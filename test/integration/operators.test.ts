@@ -524,7 +524,7 @@ describe.only("Operators tests", () => {
 
 	describe("Update Operators", () => {
 		describe("Field update operators", () => {
-			it.only("$currentDate", async () => {
+			it("$currentDate", async () => {
 				await db.update({
 					filter: { name: "john" },
 					update: {
@@ -564,14 +564,201 @@ describe.only("Operators tests", () => {
 						.lastLogin === "number"
 				).eq(true);
 			});
-			it.skip("$inc", async () => {});
-			it.skip("$min", async () => {});
-			it.skip("$max", async () => {});
-			it.skip("$mul", async () => {});
-			it.skip("$rename", async () => {});
-			it.skip("$set", async () => {});
-			it.skip("$setOnInsert", async () => {});
-			it.skip("$unset", async () => {});
+			it("$inc", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$inc: {
+							age: 1,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					36
+				);
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$inc: {
+							age: 1,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					37
+				);
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$inc: {
+							age: 3,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					40
+				);
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$inc: {
+							age: -5,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					35
+				);
+			});
+			it("$mul", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$mul: {
+							age: 2,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					70
+				);
+			});
+			it("$min", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$min: {
+							age: 37,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					35
+				);
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$min: {
+							age: 32,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					32
+				);
+			});
+			it("$max", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$max: {
+							age: 32,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					35
+				);
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$max: {
+							age: 37,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					37
+				);
+			});
+			it("$rename", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$rename: {
+							rooms: "_rooms",
+						},
+					},
+				});
+				expect(
+					((await db.find({ filter: { name: "john" } })) as any)[0]
+						._rooms.length
+				).eq(4);
+			});
+			it("$set", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$set: {
+							$deep: {
+								"props.h": 192,
+							},
+						},
+					},
+				});
+				expect(
+					(await db.find({ filter: { name: "john" } }))[0].props.h
+				).eq(192);
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$set: {
+							age: 90,
+						},
+					},
+				});
+				expect((await db.find({ filter: { name: "john" } }))[0].age).eq(
+					90
+				);
+			});
+			it("$unset", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$unset: {
+							$deep: {
+								"props.h": 192,
+							},
+						},
+					},
+				});
+				expect(
+					(await db.find({ filter: { name: "john" } }))[0].props.h
+				).eq(undefined);
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$unset: {
+							additional: "",
+						},
+					},
+				});
+				expect(
+					(await db.find({ filter: { name: "john" } }))[0].additional
+				).eq(undefined);
+			});
+			it.only("$setOnInsert", async () => {
+				await db.upsert({
+					filter: { name: "john" },
+					update: {
+						$set: { name: "joe" },
+						$setOnInsert: Employee.new({ name: "joe" }),
+					},
+				});
+				expect((await db.find({ filter: { name: "joe" } }))[0].age).eq(
+					35
+				);
+				await db.upsert({
+					filter: { name: "elizabeth" },
+					update: {
+						$set: { name: "beth" },
+						$setOnInsert: Employee.new({ name: "beth" }),
+					},
+				});
+				expect((await db.find({ filter: { name: "beth" } }))[0].age).eq(
+					9
+				);
+			});
 		});
 		describe("Array update operators", () => {
 			it.skip("$addToSet", async () => {});
