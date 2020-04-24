@@ -12,4 +12,5 @@ export {
 	UpdateOperators,
 	UpdateOperatorsModifiers,
 	UpdateOperatorsOnSchema,
+	UpsertOperators,
 } from "./update";

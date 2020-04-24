@@ -544,6 +544,12 @@ const lastStepModifierFunctions: ModifierGroup = {
 		obj[value] = obj[field];
 		delete obj[field];
 	},
+
+	$setOnInsert: function () {
+		// if the operator reached here
+		// it means that the update was not actually an insertion.
+		// this operator is being dealt with at the datastore.ts file
+	},
 };
 
 // Given its name, create the complete modifier function

@@ -27,6 +27,15 @@ export interface UpdateOperatorsModifiers<S> {
 	$position: number;
 }
 
+export interface UpsertOperators<S> extends UpdateOperators<S> {
+	/**
+	 * If an update operation with upsert: true results in an insert of a document, then $setOnInsert assigns the specified values to the fields in the document. If the update operation does not result in an insert, $setOnInsert does nothing.
+	 * { $setOnInsert: { <field1>: <value1>, ... } },
+	 *
+	 */
+	$setOnInsert: Partial<S>;
+}
+
 export interface UpdateOperators<S> {
 	/**
 	 * Increments the value of the field by the specified amount.
@@ -43,12 +52,6 @@ export interface UpdateOperators<S> {
 	 * {$rename: { <field1>: <newName1>, <field2>: <newName2>, ... } }
 	 */
 	$rename?: UpdateOperatorsOnSchema<S, string>;
-	/**
-	 * If an update operation with upsert: true results in an insert of a document, then $setOnInsert assigns the specified values to the fields in the document. If the update operation does not result in an insert, $setOnInsert does nothing.
-	 * { $setOnInsert: { <field1>: <value1>, ... } },
-	 *
-	 */
-	$setOnInsert?: Partial<S>;
 	/**
 	 * Sets the value of a field in a document.
 	 * { $set: { <field1>: <value1>, ... } }

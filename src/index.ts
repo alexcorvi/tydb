@@ -7,6 +7,7 @@ import {
 	SchemaKeySort,
 	UpdateOperators,
 	AnyFieldLevelQueryOperators,
+	UpsertOperators,
 } from "./types"; // for some reason using @types will disable some type checks
 
 interface DatabaseConfigurations<S extends BaseModel<S>> {
@@ -127,15 +128,23 @@ export class Database<S extends BaseModel<S>> {
 	 */
 	public async upsert({
 		filter,
-		doc,
+		update,
+		multi,
 	}: {
 		filter: Filter<NFP<S>>;
-		doc: S;
+		update: UpsertOperators<NFP<S>>;
+		multi?: boolean;
 	}): Promise<{ docs: S[]; number: number; upsert: boolean }> {
 		filter = fixDeep(filter || {});
-		delete doc._id; // we need to remove the ID, so it doesn't throw an error if the document is found
-		const res = await this._datastore.update(filter, doc, {
-			multi: false,
+		update = fix$Pull$eq(update);
+		if (update.$set) {
+			update.$set = fixDeep(update.$set);
+		}
+		if (update.$unset) {
+			update.$unset = fixDeep(update.$unset);
+		}
+		const res = await this._datastore.update(filter, update, {
+			multi,
 			upsert: true,
 		});
 		return res;
@@ -199,7 +208,7 @@ function fixDeep<T extends Filter<any>>(input: T): T {
 	return result;
 }
 
-function fix$Pull$eq<S>(updateQuery: UpdateOperators<S>) {
+function fix$Pull$eq<S>(updateQuery: any) {
 	if (updateQuery.$pull) {
 		Object.keys(updateQuery.$pull).forEach((key) => {
 			if (

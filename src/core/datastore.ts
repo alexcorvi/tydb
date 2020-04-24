@@ -554,22 +554,11 @@ export class Datastore<
 				upsert: false,
 			};
 		} else if (res.length === 0 && upsert) {
-			let toBeInserted;
-
-			try {
-				model.checkObject(updateQuery);
-				// updateQuery is a simple object with no modifier, use it as the document to insert
-				toBeInserted = updateQuery;
-			} catch (e) {
-				// updateQuery contains modifiers, use the find query as the base,
-				// strip it from all operators and update it according to updateQuery
-				toBeInserted = model.modify(
-					model.deepCopy(query, this.model, true),
-					updateQuery,
-					this.model
-				);
-			}
-
+			let toBeInserted = model.deepCopy(
+				updateQuery.$setOnInsert,
+				this.model,
+				true
+			);
 			const newDoc = await this._insert(toBeInserted);
 			if (Array.isArray(newDoc)) {
 				return {
