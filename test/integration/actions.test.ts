@@ -552,7 +552,12 @@ describe("Actions", async () => {
 			it("When the document is found", async () => {
 				const res = await db.upsert({
 					filter: { name: "alex" },
-					doc: Employee.new({ name: "aly" }),
+					update: {
+						$set: {
+							name: "aly",
+						},
+						$setOnInsert: Employee.new({ name: "aly" }),
+					},
 				});
 				expect(res.upsert).eq(false);
 				expect(res.number).eq(1);
@@ -560,13 +565,19 @@ describe("Actions", async () => {
 				expect(res.docs[0].name).eq("aly");
 				const find = await db.find({ filter: { name: "aly" } });
 				expect(find.length).eq(1);
+				expect(find[0].age).eq(27);
 				const findAll = await db.find({ filter: {} });
 				expect(findAll.length).eq(1); // no insertion occurred
 			});
 			it("When the document is not found", async () => {
 				const res = await db.upsert({
 					filter: { name: "david" },
-					doc: Employee.new({ name: "aly" }),
+					update: {
+						$set: {
+							name: "aly",
+						},
+						$setOnInsert: Employee.new({ name: "aly", age: 19 }),
+					},
 				});
 				expect(res.upsert).eq(true);
 				expect(res.number).eq(1);
@@ -574,6 +585,7 @@ describe("Actions", async () => {
 				expect(res.docs[0].name).eq("aly");
 				const find = await db.find({ filter: { name: "aly" } });
 				expect(find.length).eq(1);
+				expect(find[0].age).eq(19);
 				const findAll = await db.find({ filter: {} });
 				expect(findAll.length).eq(2); // insertion of a new document occurred
 			});
