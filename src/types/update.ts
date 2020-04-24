@@ -64,7 +64,13 @@ export interface UpdateOperators<S> {
 	 * Removes the specified field from a document.
 	 * { $unset: { <field1>: "", ... } }
 	 */
-	$unset?: Partial<S>;
+	$unset?: Partial<
+		{ [key in Keys<S>]: "" } & {
+			$deep: {
+				[key: string]: any;
+			};
+		}
+	>;
 	/**
 	 * Only updates the field if the specified value is less than the existing field value.
 	 * { $min: { <field1>: <value1>, ... } }
