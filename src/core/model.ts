@@ -539,6 +539,11 @@ const lastStepModifierFunctions: ModifierGroup = {
 			obj[field] = new Date();
 		}
 	},
+
+	$rename: function (obj: keyedObjectG<any>, field: string, value: any) {
+		obj[value] = obj[field];
+		delete obj[field];
+	},
 };
 
 // Given its name, create the complete modifier function
