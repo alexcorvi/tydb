@@ -1,0 +1,550 @@
+import { FS_Persistence_Adapter } from "../../src/adapters/fs-adapter";
+import { Database } from "../../src/index";
+import { BaseModel } from "../../src/types/base-schema";
+import { expect } from "chai";
+import { existsSync, unlinkSync } from "fs";
+
+interface Child {
+	name: string;
+	age: number;
+}
+
+class Employee extends BaseModel<Employee> {
+	name: string = "";
+	rooms: string[] = [];
+	events: number[] = [];
+	age: number = 9;
+	male: boolean = false;
+	children: Child[] = [];
+	props: {
+		h: number;
+		w: number;
+	} = { h: 0, w: 0 };
+
+	additional: boolean | undefined;
+	variant: number | string | undefined;
+
+	isFemale() {
+		return !this.male;
+	}
+
+	get female() {
+		return !this.male;
+	}
+}
+
+describe.only("Operators tests", () => {
+	let dbName = "workspace/operators.db";
+
+	let db = new Database<Employee>({
+		ref: dbName,
+		model: Employee,
+		persistence_adapter: FS_Persistence_Adapter,
+	});
+
+	beforeEach(async () => {
+		await db.loaded;
+		if (existsSync(dbName)) {
+			unlinkSync(dbName);
+		}
+		if (existsSync(dbName + ".idx.db")) {
+			unlinkSync(dbName + ".idx.db");
+		}
+		await db.reload();
+		expect((await db.find({})).length).to.equal(0);
+		await db.insert([
+			Employee.new({
+				name: "alex",
+				age: 28,
+				male: true,
+				children: [],
+				rooms: ["a", "b", "c"],
+				events: [2, 4, 6],
+				props: { h: 174, w: 59 },
+				variant: "str",
+			}),
+			Employee.new({
+				name: "dina",
+				age: 27,
+				male: false,
+				children: [],
+				rooms: ["a", "c"],
+				events: [3, 6, 9],
+				props: { h: 165, w: 69 },
+				variant: 12,
+			}),
+			Employee.new({
+				name: "john",
+				age: 35,
+				male: true,
+				rooms: ["a", "b", "c", "d"],
+				events: [5, 10, 15],
+				children: [
+					{
+						name: "jim",
+						age: 2,
+					},
+					{
+						name: "tom",
+						age: 4,
+					},
+					{
+						name: "roy",
+						age: 8,
+					},
+				],
+				props: { h: 160, w: 69 },
+				additional: true,
+			}),
+		]);
+	});
+
+	describe("Query Selectors", () => {
+		describe("Comparison", () => {
+			it("$eq", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { name: { $eq: "john" } },
+					});
+					expect(res.length).eq(1);
+					expect(res[0].age).eq(35);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: { $deep: { "props.h": { $eq: 160 } } },
+					});
+					expect(res.length).eq(1);
+					expect(res[0].age).eq(35);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { rooms: { $eq: "d" } },
+					});
+					expect(res.length).eq(1);
+					expect(res[0].age).eq(35);
+				}
+			});
+			it("$ne", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { name: { $ne: "john" } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.age === 35)).eq(-1);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: { $deep: { "props.h": { $ne: 160 } } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.age === 35)).eq(-1);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { rooms: { $ne: "d" } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.age === 35)).eq(-1);
+				}
+			});
+			it("$gt", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { age: { $gt: 27 } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.name === "dina")).eq(-1);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: { $deep: { "props.h": { $gt: 160 } } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.age === 35)).eq(-1);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { events: { $gt: 12 } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+			});
+			it("$lt", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { age: { $lt: 28 } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.name === "dina")).eq(0);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: { $deep: { "props.h": { $lt: 165 } } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { events: { $lt: 3 } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 28)).eq(0);
+				}
+			});
+			it("$gte", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { age: { $gte: 28 } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.name === "dina")).eq(-1);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: { $deep: { "props.h": { $gte: 165 } } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.age === 35)).eq(-1);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { events: { $gte: 15 } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+			});
+			it("$lte", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { age: { $lte: 27 } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.name === "dina")).eq(0);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: { $deep: { "props.h": { $lte: 160 } } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { events: { $lte: 2 } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 28)).eq(0);
+				}
+			});
+			it("$in", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { age: { $in: [28, 27, 39] } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.name === "john")).eq(-1);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: { $deep: { "props.h": { $in: [160] } } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { events: { $in: [2, 4, 6, 8] } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.age === 35)).eq(-1);
+				}
+			});
+			it("$nin", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { age: { $nin: [28, 27, 39] } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.name === "john")).eq(0);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: { $deep: { "props.h": { $nin: [165, 174] } } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { events: { $nin: [6, 12] } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+			});
+		});
+		describe("Logical", () => {
+			it("$and", async () => {
+				const res = await db.find({
+					filter: {
+						$and: [
+							{
+								events: {
+									$lte: 12,
+								},
+							},
+							{
+								events: {
+									$gt: 9,
+								},
+							},
+						],
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("john");
+			});
+			it("$nor", async () => {
+				const res = await db.find({
+					filter: {
+						$nor: [
+							{
+								age: {
+									$lt: 28,
+								},
+							},
+							{
+								age: {
+									$gt: 30,
+								},
+							},
+						],
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("alex");
+			});
+			it("$not", async () => {
+				const res = await db.find({
+					filter: {
+						events: {
+							$not: { $lt: 10 },
+						},
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("john");
+			});
+			it("$or", async () => {
+				const res = await db.find({
+					filter: {
+						$or: [
+							{
+								age: {
+									$lt: 28,
+								},
+							},
+							{
+								age: {
+									$gt: 30,
+								},
+							},
+						],
+					},
+				});
+				expect(res.length).eq(2);
+				expect(res.findIndex((x) => x.name === "alex")).eq(-1);
+			});
+		});
+		describe("Element", () => {
+			it("$exists", async () => {
+				{
+					const res = await db.find({
+						filter: { additional: { $exists: true } },
+					});
+					expect(res.length).eq(1);
+					expect(res[0].name).eq("john");
+				}
+				{
+					const res = await db.find({
+						filter: { additional: { $exists: false } },
+					});
+					expect(res.length).eq(2);
+					expect(res.findIndex((x) => x.name === "john")).eq(-1);
+				}
+			});
+			it("$type", async () => {
+				{
+					const res = await db.find({
+						filter: { variant: { $type: "number" } },
+					});
+					expect(res.length).eq(1);
+					expect(res[0].name).eq("dina");
+				}
+				{
+					const res = await db.find({
+						filter: { variant: { $type: "string" } },
+					});
+					expect(res.length).eq(1);
+					expect(res[0].name).eq("alex");
+				}
+				{
+					const res = await db.find({
+						filter: {
+							$nor: [
+								{ variant: { $type: "string" } },
+								{ variant: { $type: "number" } },
+							],
+						},
+					});
+					expect(res.length).eq(1);
+					expect(res[0].name).eq("john");
+				}
+			});
+		});
+		describe("Evaluation", () => {
+			it("$mod", async () => {
+				const res = await db.find({
+					filter: {
+						age: {
+							$mod: [5, 0],
+						},
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("john");
+			});
+			it("$regex", async () => {
+				const res = await db.find({
+					filter: {
+						name: {
+							$regex: /a/,
+						},
+					},
+				});
+				expect(res.length).eq(2);
+				expect(res.findIndex((x) => x.name === "john")).eq(-1);
+			});
+			it("$where", async () => {
+				const res = await db.find({
+					filter: {
+						$where: function () {
+							return (
+								this.rooms.indexOf("b") > -1 && this.age > 30
+							);
+						},
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("john");
+			});
+		});
+		describe("Array", () => {
+			it("$all", async () => {
+				const res = await db.find({
+					filter: {
+						rooms: {
+							$all: ["b", "c"],
+						},
+					},
+				});
+				expect(res.length).eq(2);
+				expect(res.find((x) => x.name === "dina")).eq(undefined);
+			});
+			it("$elemMatch", async () => {
+				{
+					const res = await db.find({
+						filter: {
+							events: {
+								$elemMatch: {
+									$gt: 12,
+								},
+							},
+						},
+					});
+					expect(res.length).eq(1);
+					expect(res[0].name).eq("john");
+				}
+				{
+					const res = await db.find({
+						filter: {
+							events: {
+								$elemMatch: {
+									$not: {
+										$lt: 12,
+									},
+								},
+							},
+						},
+					});
+					expect(res.length).eq(1);
+					expect(res[0].name).eq("john");
+				}
+			});
+			it("$size", async () => {
+				const res = await db.find({
+					filter: {
+						rooms: {
+							$size: 2,
+						},
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("dina");
+			});
+		});
+	});
+
+	describe("Update Operators", () => {
+		describe("Field update operators", () => {
+			it.skip("$currentDate", async () => {});
+			it.skip("$inc", async () => {});
+			it.skip("$min", async () => {});
+			it.skip("$max", async () => {});
+			it.skip("$mul", async () => {});
+			it.skip("$rename", async () => {});
+			it.skip("$set", async () => {});
+			it.skip("$setOnInsert", async () => {});
+			it.skip("$unset", async () => {});
+		});
+		describe("Array update operators", () => {
+			it.skip("$addToSet", async () => {});
+			it.skip("$pop", async () => {});
+			it.skip("$pull", async () => {});
+			it.skip("$push", async () => {});
+			it.skip("$push", async () => {});
+			it.skip("$pushAll", async () => {});
+			it.skip("$each", async () => {});
+			it.skip("$position", async () => {});
+			it.skip("$slice", async () => {});
+			it.skip("$sort", async () => {});
+		});
+	});
+});
