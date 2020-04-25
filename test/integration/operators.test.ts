@@ -839,6 +839,24 @@ describe.only("Operators tests", () => {
 				);
 				expect(JSON.stringify(doc.events)).eq(JSON.stringify([15]));
 			});
+			it.only("$pull $eq", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$pull: {
+							rooms: "a",
+							events: {
+								$eq: 10,
+							},
+						},
+					},
+				});
+				const doc = (await db.find({ filter: { name: "john" } }))[0];
+				expect(JSON.stringify(doc.rooms)).eq(
+					JSON.stringify(["b", "c", "d"])
+				);
+				expect(JSON.stringify(doc.events)).eq(JSON.stringify([5, 15]));
+			});
 			it("$pullAll", async () => {
 				await db.update({
 					filter: { name: "john" },
