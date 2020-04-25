@@ -488,6 +488,28 @@ const lastStepModifierFunctions: ModifierGroup = {
 	},
 
 	/**
+	 * Removes all instances of a value from an existing array
+	 */
+	$pullAll: function (
+		obj: keyedObjectG<Value[]>,
+		field: string,
+		value: Array<any>
+	) {
+		if (!Array.isArray(obj[field])) {
+			throw new Error("Can't $pull an element from non-array values");
+		}
+
+		let arr = obj[field];
+		for (let i = arr.length - 1; i >= 0; i -= 1) {
+			for (let j = 0; j < value.length; j++) {
+				if (match(arr[i], value[j])) {
+					arr.splice(i, 1);
+				}
+			}
+		}
+	},
+
+	/**
 	 * Increment a numeric field's value
 	 */
 	$inc: function (obj: keyedObjectG<number>, field: string, value: Value) {
