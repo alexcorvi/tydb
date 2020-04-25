@@ -108,7 +108,6 @@ export class Database<S extends BaseModel<S>> {
 		multi?: boolean;
 	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
-		update = fix$Pull$eq(update);
 		if (update.$set) {
 			update.$set = fixDeep(update.$set);
 		}
@@ -136,7 +135,6 @@ export class Database<S extends BaseModel<S>> {
 		multi?: boolean;
 	}): Promise<{ docs: S[]; number: number; upsert: boolean }> {
 		filter = fixDeep(filter || {});
-		update = fix$Pull$eq(update);
 		if (update.$set) {
 			update.$set = fixDeep(update.$set);
 		}
@@ -206,23 +204,4 @@ function fixDeep<T extends Filter<any>>(input: T): T {
 	const result = Object.assign<T, Filter<any>>(input, input.$deep);
 	delete result.$deep;
 	return result;
-}
-
-function fix$Pull$eq<S>(updateQuery: any) {
-	if (updateQuery.$pull) {
-		Object.keys(updateQuery.$pull).forEach((key) => {
-			if (
-				(updateQuery.$pull as {
-					[key: string]: AnyFieldLevelQueryOperators<any>;
-				})[key].$eq
-			) {
-				(updateQuery.$pull as { [key: string]: any })[
-					key
-				] = (updateQuery.$pull as {
-					[key: string]: AnyFieldLevelQueryOperators<any>;
-				})[key].$eq;
-			}
-		});
-	}
-	return updateQuery;
 }
