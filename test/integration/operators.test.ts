@@ -82,7 +82,7 @@ describe.only("Operators tests", () => {
 				children: [
 					{
 						name: "jim",
-						age: 2,
+						age: 3,
 					},
 					{
 						name: "tom",
@@ -737,7 +737,7 @@ describe.only("Operators tests", () => {
 					(await db.find({ filter: { name: "john" } }))[0].additional
 				).eq(undefined);
 			});
-			it.only("$setOnInsert", async () => {
+			it("$setOnInsert", async () => {
 				await db.upsert({
 					filter: { name: "john" },
 					update: {
@@ -761,16 +761,295 @@ describe.only("Operators tests", () => {
 			});
 		});
 		describe("Array update operators", () => {
-			it.skip("$addToSet", async () => {});
-			it.skip("$pop", async () => {});
-			it.skip("$pull", async () => {});
-			it.skip("$push", async () => {});
-			it.skip("$push", async () => {});
-			it.skip("$pushAll", async () => {});
-			it.skip("$each", async () => {});
-			it.skip("$position", async () => {});
-			it.skip("$slice", async () => {});
-			it.skip("$sort", async () => {});
+			it("$addToSet", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$addToSet: {
+							rooms: "f",
+						},
+					},
+				});
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$addToSet: {
+							rooms: {
+								$each: ["a", "n"],
+							},
+						},
+					},
+				});
+				const doc = (await db.find({ filter: { name: "john" } }))[0];
+				expect(doc.rooms.length).eq(6);
+				expect(doc.rooms[doc.rooms.length - 1]).eq("n");
+				expect(doc.rooms[doc.rooms.length - 2]).eq("f");
+			});
+			it("$pop", async () => {
+				{
+					await db.update({
+						filter: { name: "john" },
+						update: {
+							$pop: {
+								rooms: -1,
+							},
+						},
+					});
+					const doc = (
+						await db.find({ filter: { name: "john" } })
+					)[0];
+					expect(doc.rooms.length).eq(3);
+					expect(JSON.stringify(doc.rooms)).eq(
+						JSON.stringify(["b", "c", "d"])
+					);
+				}
+				{
+					await db.update({
+						filter: { name: "john" },
+						update: {
+							$pop: {
+								rooms: 1,
+							},
+						},
+					});
+					const doc = (
+						await db.find({ filter: { name: "john" } })
+					)[0];
+					expect(doc.rooms.length).eq(2);
+					expect(JSON.stringify(doc.rooms)).eq(
+						JSON.stringify(["b", "c"])
+					);
+				}
+			});
+			it("$pull", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$pull: {
+							rooms: "a",
+							events: {
+								$lte: 10,
+							},
+						},
+					},
+				});
+				const doc = (await db.find({ filter: { name: "john" } }))[0];
+				expect(JSON.stringify(doc.rooms)).eq(
+					JSON.stringify(["b", "c", "d"])
+				);
+				expect(JSON.stringify(doc.events)).eq(JSON.stringify([15]));
+			});
+			it("$pullAll", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$pullAll: {
+							rooms: ["a"],
+							events: [5, 10],
+						},
+					},
+				});
+				const doc = (await db.find({ filter: { name: "john" } }))[0];
+				expect(JSON.stringify(doc.rooms)).eq(
+					JSON.stringify(["b", "c", "d"])
+				);
+				expect(JSON.stringify(doc.events)).eq(JSON.stringify([15]));
+			});
+			it("$push", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$push: {
+							events: 5,
+						},
+					},
+				});
+				const doc = (await db.find({ filter: { name: "john" } }))[0];
+				expect(JSON.stringify(doc.events)).eq(
+					JSON.stringify([5, 10, 15, 5])
+				);
+			});
+			it("$push $each", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$push: {
+							events: {
+								$each: [5, 10, 15],
+							},
+						},
+					},
+				});
+				const doc = (await db.find({ filter: { name: "john" } }))[0];
+				expect(JSON.stringify(doc.events)).eq(
+					JSON.stringify([5, 10, 15, 5, 10, 15])
+				);
+			});
+			it("$push $each $position", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$push: {
+							events: {
+								$each: [5, 10, 15],
+								$position: 1,
+							},
+						},
+					},
+				});
+				const doc = (await db.find({ filter: { name: "john" } }))[0];
+				expect(JSON.stringify(doc.events)).eq(
+					JSON.stringify([5, 5, 10, 15, 10, 15])
+				);
+			});
+			it("$push $each $slice", async () => {
+				await db.update({
+					filter: { name: "john" },
+					update: {
+						$push: {
+							events: {
+								$each: [5, 10, 15],
+								$position: 1,
+								$slice: 3,
+							},
+						},
+					},
+				});
+				const doc = (await db.find({ filter: { name: "john" } }))[0];
+				expect(JSON.stringify(doc.events)).eq(
+					JSON.stringify([5, 5, 10])
+				);
+			});
+			it("$push $each $sort", async () => {
+				{
+					await db.update({
+						filter: { name: "john" },
+						update: {
+							$push: {
+								events: {
+									$each: [5, 10, 15],
+									$sort: 1,
+								},
+							},
+						},
+					});
+					const doc = (
+						await db.find({ filter: { name: "john" } })
+					)[0];
+					expect(JSON.stringify(doc.events)).eq(
+						JSON.stringify([5, 5, 10, 10, 15, 15])
+					);
+				}
+				{
+					await db.update({
+						filter: { name: "john" },
+						update: {
+							$push: {
+								events: {
+									$each: [5, 10, 15],
+									$sort: -1,
+								},
+							},
+						},
+					});
+					const doc = (
+						await db.find({ filter: { name: "john" } })
+					)[0];
+					expect(JSON.stringify(doc.events)).eq(
+						JSON.stringify([15, 15, 15, 10, 10, 10, 5, 5, 5])
+					);
+				}
+			});
+			describe("variations on the sort mechanism", () => {
+				it("$push $each $sort 1", async () => {
+					await db.update({
+						filter: { name: "john" },
+						update: {
+							$push: {
+								children: {
+									$each: [{ name: "tim", age: 3 }],
+									$sort: {
+										age: 1,
+										name: 1,
+									},
+								},
+							},
+						},
+					});
+					const doc = (
+						await db.find({ filter: { name: "john" } })
+					)[0];
+					expect(JSON.stringify(doc.children.map((x) => x.name))).eq(
+						JSON.stringify(["jim", "tim", "tom", "roy"])
+					);
+				});
+				it("$push $each $sort 2", async () => {
+					await db.update({
+						filter: { name: "john" },
+						update: {
+							$push: {
+								children: {
+									$each: [{ name: "tim", age: 3 }],
+									$sort: {
+										age: 1,
+										name: -1,
+									},
+								},
+							},
+						},
+					});
+					const doc = (
+						await db.find({ filter: { name: "john" } })
+					)[0];
+					expect(JSON.stringify(doc.children.map((x) => x.name))).eq(
+						JSON.stringify(["tim", "jim", "tom", "roy"])
+					);
+				});
+				it("$push $each $sort 3", async () => {
+					await db.update({
+						filter: { name: "john" },
+						update: {
+							$push: {
+								children: {
+									$each: [{ name: "tim", age: 3 }],
+									$sort: {
+										age: -1,
+										name: -1,
+									},
+								},
+							},
+						},
+					});
+					const doc = (
+						await db.find({ filter: { name: "john" } })
+					)[0];
+					expect(JSON.stringify(doc.children.map((x) => x.name))).eq(
+						JSON.stringify(["roy", "tom", "tim", "jim"])
+					);
+				});
+				it("$push $each $sort 4", async () => {
+					await db.update({
+						filter: { name: "john" },
+						update: {
+							$push: {
+								children: {
+									$each: [{ name: "tim", age: 3 }],
+									$sort: {
+										age: -1,
+										name: 1,
+									},
+								},
+							},
+						},
+					});
+					const doc = (
+						await db.find({ filter: { name: "john" } })
+					)[0];
+					expect(JSON.stringify(doc.children.map((x) => x.name))).eq(
+						JSON.stringify(["roy", "tom", "jim", "tim"])
+					);
+				});
+			});
 		});
 	});
 });
