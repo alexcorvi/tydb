@@ -10,7 +10,6 @@ export {
 export { Result } from "./results";
 export {
 	UpdateOperators,
-	UpdateOperatorsModifiers,
 	UpdateOperatorsOnSchema,
 	UpsertOperators,
 } from "./update";
