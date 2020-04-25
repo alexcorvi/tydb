@@ -356,20 +356,63 @@ const lastStepModifierFunctions: ModifierGroup = {
 		) {
 			const eachVal = ((value as unknown) as keyedObject)["$each"];
 			const sliceVal = ((value as unknown) as keyedObject)["$slice"];
-			if (
-				Object.keys(value).length >= 3 ||
-				(Object.keys(value).length === 2 && sliceVal === undefined)
-			) {
-				throw new Error(
-					"Can only use $slice in conjunction with $each when $push to array"
-				);
+			const posVal = ((value as unknown) as keyedObject)["$position"];
+			const sortVal = ((value as unknown) as keyedObject)["$sort"];
+
+			const allKeys = Object.keys(value);
+
+			if (Object.keys(value).length > 1) {
+				if (
+					allKeys.filter((x) => {
+						return (
+							["$each", "$slice", "$position", "$sort"].indexOf(
+								x
+							) === -1
+						);
+					}).length
+				) {
+					throw new Error(
+						"Can only use the modifiers $slice, $position and $sort in conjunction with $each when $push to array"
+					);
+				}
 			}
 
 			if (!Array.isArray(eachVal)) {
 				throw new Error("$each requires an array value");
 			}
 
-			eachVal.forEach((v) => obj[field].push(v));
+			if (posVal) {
+				for (let i = 0; i < eachVal.length; i++) {
+					const element = eachVal[i];
+					obj[field].splice((posVal as number) + i, 0, element);
+				}
+			} else {
+				eachVal.forEach((v) => obj[field].push(v));
+			}
+
+			if (sortVal) {
+				if (typeof sortVal === "number") {
+					if (sortVal === 1)
+						obj[field].sort((a, b) => compareThings(a, b));
+					else obj[field].sort((a, b) => compareThings(b, a));
+				} else {
+					obj[field].sort((a: any, b: any) => {
+						const keys = Object.keys(sortVal);
+						for (let i = 0; i < keys.length; i++) {
+							const key = keys[i];
+							const order = (sortVal as any)[key];
+							if (order === 1) {
+								const comp = compareThings(a[key], b[key]);
+								if (comp) return comp;
+							} else {
+								const comp = compareThings(b[key], a[key]);
+								if (comp) return comp;
+							}
+						}
+						return 0;
+					});
+				}
+			}
 
 			if (sliceVal === undefined) {
 				return;
