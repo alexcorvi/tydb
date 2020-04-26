@@ -1129,10 +1129,7 @@ function match(obj: any, query: any): boolean {
 				return false;
 			}
 		} else {
-			if (
-				Object.keys(queryValue).length &&
-				!matchQueryPart(obj, queryKey, queryValue)
-			) {
+			if (!matchQueryPart(obj, queryKey, queryValue)) {
 				return false;
 			}
 		}
@@ -1184,7 +1181,7 @@ function matchQueryPart(
 			}
 			if (Array.isArray(queryValue["$nin"])) {
 				const intersection = queryValue["$nin"].filter(
-					(value) => -1 !== objValue.indexOf(value)
+					(value: any) => -1 !== objValue.indexOf(value)
 				);
 				if (intersection.length) {
 					return false;
