@@ -3,7 +3,7 @@
 		"outDir": "dist",
 		"noImplicitAny": true,
 		"strictNullChecks": true,
-		"module": "es6",
+		"module": "commonjs",
 		"target": "es6",
 		"forceConsistentCasingInFileNames": true,
 		"newLine": "LF",
@@ -13,7 +13,8 @@
 		"strict": true,
 		"removeComments": false,
 		"skipLibCheck": true,
-		"importHelpers": true
+		"importHelpers": true,
+		"moduleResolution": "node"
 	},
 	"include": ["./src/**/*"],
 	"exclude": ["node_modules"]
