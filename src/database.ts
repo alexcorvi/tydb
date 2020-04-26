@@ -20,11 +20,13 @@ export interface DatabaseConfigurations<S extends BaseModel<S>> {
 	timestampData?: boolean;
 	persistence_adapter?: typeof Persistence;
 	autoCompaction?: number;
+	reloadBeforeOperations?: boolean;
 }
 
 export class Database<S extends BaseModel<S>> {
 	private ref: string;
 	private _datastore: Datastore<S>;
+	private reloadBeforeOperations: boolean;
 	public loaded: Promise<boolean>;
 
 	constructor(options: DatabaseConfigurations<S>) {
@@ -34,6 +36,7 @@ export class Database<S extends BaseModel<S>> {
 				new: (json: S) => S;
 			});
 		this.ref = options.ref;
+		this.reloadBeforeOperations = !!options.reloadBeforeOperations;
 		this._datastore = new Datastore({
 			ref: this.ref,
 			model: model,
@@ -51,10 +54,16 @@ export class Database<S extends BaseModel<S>> {
 		}
 	}
 
+	private async reloadFirst() {
+		if (!this.reloadBeforeOperations) return;
+		await this.reload();
+	}
+
 	/**
 	 * insert documents
 	 */
 	public async insert(docs: S[]): Promise<{ docs: S[]; number: number }> {
+		await this.reloadFirst();
 		const res = await this._datastore.insert(docs as any);
 		return res;
 	}
@@ -91,6 +100,7 @@ export class Database<S extends BaseModel<S>> {
 		if (project) {
 			cursor.projection(project as any);
 		}
+		await this.reloadFirst();
 		return await cursor.exec();
 	}
 
@@ -113,6 +123,7 @@ export class Database<S extends BaseModel<S>> {
 		if (update.$unset) {
 			update.$unset = fixDeep(update.$unset);
 		}
+		await this.reloadFirst();
 		const res = await this._datastore.update(filter, update, {
 			multi,
 			upsert: false,
@@ -140,6 +151,7 @@ export class Database<S extends BaseModel<S>> {
 		if (update.$unset) {
 			update.$unset = fixDeep(update.$unset);
 		}
+		await this.reloadFirst();
 		const res = await this._datastore.update(filter, update, {
 			multi,
 			upsert: true,
@@ -152,6 +164,7 @@ export class Database<S extends BaseModel<S>> {
 	 */
 	public async count(filter: Filter<NFP<S>> = {}): Promise<number> {
 		filter = fixDeep(filter || {});
+		await this.reloadFirst();
 		return await this._datastore.count(filter);
 	}
 
@@ -167,6 +180,7 @@ export class Database<S extends BaseModel<S>> {
 		multi?: boolean;
 	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
+		await this.reloadFirst();
 		const res = await this._datastore.remove(filter, {
 			multi: multi || false,
 		});
