@@ -217,6 +217,14 @@ export class Database<S extends BaseModel<S>> {
 	}
 
 	/**
+	 * forcefully unlocks the persistence layer
+	 * use with caution, and only if you know what you're doing
+	 */
+	async forcefulUnlock() {
+		await this._datastore.persistence.forcefulUnlock();
+	}
+
+	/**
 	 * Stop auto compaction of the persistence layer
 	 */
 	stopAutoCompaction() {

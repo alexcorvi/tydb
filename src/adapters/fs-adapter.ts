@@ -327,4 +327,9 @@ export class FS_Persistence_Adapter extends Persistence {
 	async appendData(data: string) {
 		await storage.appendFile(this.ref, `${data}\n`, "utf8");
 	}
+
+	async forcefulUnlock() {
+		await _storage.unlock(this.ref);
+		await _storage.unlock(this.ref + this.indexesFilenameExtension);
+	}
 }

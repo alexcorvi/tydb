@@ -20,6 +20,12 @@ class Memory_Persistence_Adapter extends Base {
 	async init() {}
 
 	/**
+	 * If the persistence layer is being locked, you should provide
+	 * a method for forcing an unlock
+	 */
+	async forcefulUnlock() {}
+
+	/**
 	 * Reading: two methods, one for indexes and the other for documents
 	 * each read method should utilize the event parameter,
 	 * and once a line becomes available it should "emit" it like the examples below

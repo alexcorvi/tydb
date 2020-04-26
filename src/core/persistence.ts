@@ -366,4 +366,6 @@ export class Persistence<G extends Partial<BaseModel> = any> {
 	async appendData(data: string) {
 		this._memoryData.push(data);
 	}
+
+	async forcefulUnlock() {}
 }
