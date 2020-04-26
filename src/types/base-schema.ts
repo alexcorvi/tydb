@@ -1,4 +1,4 @@
-import { customUtils } from "../core";
+import * as customUtils from "../core/customUtils";
 export class BaseModel<T = any> {
 	_id: string = customUtils.uid();
 	updatedAt?: Date;
