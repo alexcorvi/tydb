@@ -1,35 +1,54 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const customUtils = require("./customUtils");
 const indexes_1 = require("./indexes");
 const model = require("./model");
-const storage_1 = require("./storage");
-const path = require("path");
+class PersistenceEvent {
+    constructor() {
+        this.callbacks = {
+            readLine: [],
+            writeLine: [],
+            end: [],
+        };
+    }
+    on(event, cb) {
+        if (!this.callbacks[event])
+            this.callbacks[event] = [];
+        this.callbacks[event].push(cb);
+    }
+    emit(event, data) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let cbs = this.callbacks[event];
+            if (cbs) {
+                for (let i = 0; i < cbs.length; i++) {
+                    const cb = cbs[i];
+                    yield cb(data);
+                }
+            }
+        });
+    }
+}
+exports.PersistenceEvent = PersistenceEvent;
 /**
  * Create a new Persistence object for database options.db
  */
 class Persistence {
     constructor(options) {
-        this.filename = "";
+        this.ref = "";
         this.corruptAlertThreshold = 0.1;
         this.afterSerialization = (s) => s;
         this.beforeDeserialization = (s) => s;
+        this._memoryIndexes = [];
+        this._memoryData = [];
+        this._model = options.model;
         this.db = options.db;
-        this.filename = this.db.filename;
+        this.ref = this.db.ref;
         this.corruptAlertThreshold =
             options.corruptAlertThreshold !== undefined
                 ? options.corruptAlertThreshold
                 : 0.1;
-        if (this.filename &&
-            this.filename.charAt(this.filename.length - 1) === "~") {
+        if (this.ref && this.ref.charAt(this.ref.length - 1) === "~") {
             throw new Error("The datafile name can't end with a ~, which is reserved for crash safe backup files");
         }
         // After serialization and before deserialization hooks with some basic sanity checks
@@ -43,46 +62,56 @@ class Persistence {
             options.afterSerialization || this.afterSerialization;
         this.beforeDeserialization =
             options.beforeDeserialization || this.beforeDeserialization;
-        for (let i = 1; i < 30; i += 1) {
-            for (let j = 0; j < 10; j += 1) {
-                let randomString = customUtils.randomString(i);
-                if (this.beforeDeserialization(this.afterSerialization(randomString)) !== randomString) {
-                    throw new Error("beforeDeserialization is not the reverse of afterSerialization, cautiously refusing to start data store to prevent dataloss");
-                }
-            }
+        let randomString = customUtils.randomString(113);
+        if (this.beforeDeserialization(this.afterSerialization(randomString)) !== randomString) {
+            throw new Error("beforeDeserialization is not the reverse of afterSerialization, cautiously refusing to start data store to prevent dataloss");
         }
+        this.init();
     }
-    /**
-     * Persist cached database
-     * This serves as a compaction function since the cache always contains only the actual of documents in the collection
-     * while the data file is append-only so it may grow larger
-     */
-    persistCachedDatabase() {
-        return __awaiter(this, void 0, void 0, function* () {
-            let toPersist = "";
-            this.db.getAllData().forEach((doc) => {
-                toPersist += `${this.afterSerialization(model.serialize(doc))}\n`;
-            });
-            Object.keys(this.db.indexes).forEach((fieldName) => {
-                if (fieldName != "_id") {
-                    // The special _id index is managed by datastore.js, the others need to be persisted
-                    toPersist += `${this.afterSerialization(model.serialize({
+    persistAllIndexes() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const emitter = new PersistenceEvent();
+            yield this.rewriteIndexes(emitter);
+            const allKeys = Object.keys(this.db.indexes);
+            for (let i = 0; i < allKeys.length; i++) {
+                const fieldName = allKeys[i];
+                if (fieldName !== "_id") {
+                    // The special _id index is managed by datastore.ts, the others need to be persisted
+                    yield emitter.emit("writeLine", this.afterSerialization(model.serialize({
                         $$indexCreated: {
                             fieldName,
                             unique: this.db.indexes[fieldName].unique,
                             sparse: this.db.indexes[fieldName].sparse,
                         },
-                    }))}\n`;
+                    })));
                 }
-            });
-            yield storage_1.storage.crashSafeWriteFile(this.filename, toPersist);
+            }
+            yield emitter.emit("end", "");
+        });
+    }
+    persistAllData() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const emitter = new PersistenceEvent();
+            yield this.rewriteData(emitter);
+            const allData = this.db.getAllData();
+            for (let i = 0; i < allData.length; i++) {
+                const doc = allData[i];
+                yield emitter.emit("writeLine", this.afterSerialization(model.serialize(doc)));
+            }
+            yield emitter.emit("end", "");
+        });
+    }
+    persistCachedDatabase() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            yield this.persistAllData();
+            yield this.persistAllIndexes();
         });
     }
     /**
      * Queue a rewrite of the datafile
      */
     compactDatafile() {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             return yield this.db.q.add(() => this.persistCachedDatabase());
         });
     }
@@ -105,98 +134,191 @@ class Persistence {
             clearInterval(this.autocompactionIntervalId);
         }
     }
-    /**
-     * Persist new state for the given newDocs (can be insertion, update or removal)
-     * Use an append-only format
-     */
-    persistNewState(newDocs) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let toPersist = "";
-            newDocs.forEach((doc) => {
-                toPersist += `${this.afterSerialization(model.serialize(doc))}\n`;
-            });
-            if (toPersist.length === 0) {
-                return;
+    persistByAppendNewIndex(newDocs) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            for (let i = 0; i < newDocs.length; i++) {
+                const doc = newDocs[i];
+                yield this.appendIndex(this.afterSerialization(model.serialize(doc)));
             }
-            yield storage_1.storage.appendFile(this.filename, toPersist, "utf8");
         });
     }
-    /**
-     * From a database's raw data, return the corresponding
-     * machine understandable collection
-     */
-    treatRawData(rawData) {
-        const data = rawData.split("\n"); // Last line of every data file is usually blank so not really corrupt
-        const dataById = {};
-        const tData = [];
-        const indexes = {};
-        let corruptItems = -1;
-        for (let i = 0; i < data.length; i += 1) {
-            try {
-                let doc = model.deserialize(this.beforeDeserialization(data[i]));
-                if (doc._id) {
-                    if (doc.$$deleted === true) {
-                        delete dataById[doc._id];
-                    }
-                    else {
-                        dataById[doc._id] = doc;
-                    }
-                }
-                else if (doc.$$indexCreated &&
-                    doc.$$indexCreated.fieldName !== undefined) {
-                    indexes[doc.$$indexCreated.fieldName] = doc.$$indexCreated;
-                }
-                else if (typeof doc.$$indexRemoved === "string") {
-                    delete indexes[doc.$$indexRemoved];
-                }
+    persistByAppendNewData(newDocs) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            for (let i = 0; i < newDocs.length; i++) {
+                const doc = newDocs[i];
+                yield this.appendData(this.afterSerialization(model.serialize(doc)));
             }
-            catch (e) {
-                corruptItems += 1;
-            }
-        }
-        // A bit lenient on corruption
-        if (data.length > 0 &&
-            corruptItems / data.length > this.corruptAlertThreshold) {
-            throw new Error(`More than ${Math.floor(100 * this.corruptAlertThreshold)}% of the data file is corrupt, the wrong beforeDeserialization hook may be used. Cautiously refusing to start Datastore to prevent dataloss`);
-        }
-        Object.keys(dataById).forEach((k) => {
-            tData.push(dataById[k]);
         });
-        return { data: tData, indexes };
+    }
+    treatSingleLine(line) {
+        let treatedLine;
+        try {
+            treatedLine = model.deserialize(this.beforeDeserialization(line));
+            if (this._model) {
+                treatedLine = this._model.new(treatedLine);
+            }
+        }
+        catch (e) {
+            return {
+                type: "corrupt",
+                status: "remove",
+                data: false,
+            };
+        }
+        if (treatedLine._id) {
+            if (treatedLine.$$deleted === true) {
+                return {
+                    type: "doc",
+                    status: "remove",
+                    data: { _id: treatedLine._id },
+                };
+            }
+            else {
+                return {
+                    type: "doc",
+                    status: "add",
+                    data: treatedLine,
+                };
+            }
+        }
+        else if (treatedLine.$$indexCreated &&
+            treatedLine.$$indexCreated.fieldName !== undefined) {
+            return {
+                type: "index",
+                status: "add",
+                data: {
+                    fieldName: treatedLine.$$indexCreated.fieldName,
+                    data: treatedLine.$$indexCreated,
+                },
+            };
+        }
+        else if (typeof treatedLine.$$indexRemoved === "string") {
+            return {
+                type: "index",
+                status: "remove",
+                data: { fieldName: treatedLine.$$indexRemoved },
+            };
+        }
+        else {
+            return {
+                type: "corrupt",
+                status: "remove",
+                data: true,
+            };
+        }
     }
     /**
      * Load the database
      * 1) Create all indexes
      * 2) Insert all data
-     * 3) Compact the database
      * This means pulling data out of the data file or creating it if it doesn't exist
-     * Also, all data is persisted right away, which has the effect of compacting the database file
-     * This operation is very quick at startup for a big collection (60ms for ~10k docs)
      */
     loadDatabase() {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             this.db.q.pause();
             this.db.resetIndexes();
-            yield storage_1.storage.mkdirp(path.dirname(this.filename));
-            yield storage_1.storage.ensureDataFileIntegrity(this.filename);
-            const rawData = yield storage_1.storage.readFile(this.filename, "utf8");
-            let treatedData = this.treatRawData(rawData);
-            // Recreate all indexes in the datafile
-            Object.keys(treatedData.indexes).forEach((key) => {
-                let index = new indexes_1.Index(treatedData.indexes[key]);
-                this.db.indexes[key] = index;
-            });
-            // Fill cached database (i.e. all indexes) with data
-            try {
-                this.db.resetIndexes(treatedData.data);
+            const indexesEmitter = new PersistenceEvent();
+            let corrupt = 0;
+            let processed = 0;
+            let err;
+            indexesEmitter.on("readLine", (line) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                processed++;
+                const treatedLine = this.treatSingleLine(line);
+                if (treatedLine.type === "index") {
+                    if (treatedLine.status === "add") {
+                        this.db.indexes[treatedLine.data.fieldName] = new indexes_1.Index(treatedLine.data.data);
+                    }
+                    if (treatedLine.status === "remove") {
+                        delete this.db.indexes[treatedLine.data.fieldName];
+                    }
+                }
+                else if (!treatedLine.data) {
+                    corrupt++;
+                }
+            }));
+            yield this.readIndexes(indexesEmitter);
+            const dataEmitter = new PersistenceEvent();
+            dataEmitter.on("readLine", (line) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                processed++;
+                const treatedLine = this.treatSingleLine(line);
+                if (treatedLine.type === "doc") {
+                    if (treatedLine.status === "add") {
+                        try {
+                            this.db.addToIndexes(treatedLine.data);
+                        }
+                        catch (e) {
+                            // hacky way of dealing with updates
+                            if (e.toString().indexOf(treatedLine.data._id) !== -1) {
+                                this.db.removeFromIndexes(treatedLine.data);
+                                this.db.addToIndexes(treatedLine.data);
+                            }
+                            else {
+                                err = e;
+                            }
+                        }
+                    }
+                    if (treatedLine.status === "remove") {
+                        this.db.removeFromIndexes(treatedLine.data);
+                    }
+                }
+                else if (!treatedLine.data) {
+                    corrupt++;
+                }
+            }));
+            yield this.readData(dataEmitter);
+            if (processed > 0 && corrupt / processed > this.corruptAlertThreshold) {
+                throw new Error(`More than ${Math.floor(100 * this.corruptAlertThreshold)}% of the data file is corrupt, the wrong beforeDeserialization hook may be used. Cautiously refusing to start Datastore to prevent dataloss`);
             }
-            catch (e) {
-                this.db.resetIndexes(); // Rollback any index which didn't fail
-                throw e;
+            else if (err) {
+                throw err;
             }
-            yield this.db.persistence.persistCachedDatabase();
             this.db.q.start();
-            return;
+            return true;
+        });
+    }
+    init() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () { });
+    }
+    readIndexes(event) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            for (let index = 0; index < this._memoryIndexes.length; index++) {
+                const line = this._memoryIndexes[index];
+                event.emit("readLine", line);
+            }
+        });
+    }
+    readData(event) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            for (let index = 0; index < this._memoryData.length; index++) {
+                const line = this._memoryData[index];
+                event.emit("readLine", line);
+            }
+        });
+    }
+    rewriteIndexes(event) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            this._memoryIndexes = [];
+            event.on("writeLine", (data) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                this._memoryIndexes.push(data);
+            }));
+        });
+    }
+    rewriteData(event) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            this._memoryData = [];
+            event.on("writeLine", (data) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                this._memoryData.push(data);
+            }));
+        });
+    }
+    appendIndex(data) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            this._memoryIndexes.push(data);
+        });
+    }
+    appendData(data) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            this._memoryData.push(data);
         });
     }
 }

@@ -237,20 +237,21 @@ export class Datastore<
 	 */
 	private _leastCandidates(query: any) {
 		const currentIndexKeys = Object.keys(this.indexes);
+		const queryKeys = Object.keys(query);
 
 		// STEP 1: get candidates list by checking indexes from most to least frequent use case
 		let usableQueryKeys: string[] = [];
 
 		// possibility: basic match
-		Object.keys(query).forEach((k) => {
+		queryKeys.forEach((k) => {
 			// only types that can't be used with . notation
-			if (this._isBasicType(query[k])) {
+			if (
+				this._isBasicType(query[k]) &&
+				currentIndexKeys.indexOf(k) !== -1
+			) {
 				usableQueryKeys.push(k);
 			}
 		});
-		usableQueryKeys = usableQueryKeys.filter(
-			(key) => currentIndexKeys.indexOf(key) !== -1
-		);
 		if (usableQueryKeys.length > 0) {
 			return this.indexes[usableQueryKeys[0]].getMatching(
 				query[usableQueryKeys[0]]
@@ -258,18 +259,16 @@ export class Datastore<
 		}
 
 		// possibility: using $eq
-		Object.keys(query).forEach((k) => {
+		queryKeys.forEach((k) => {
 			if (
 				query[k] &&
 				query[k].hasOwnProperty("$eq") &&
-				this._isBasicType(query[k].$eq)
+				this._isBasicType(query[k].$eq) &&
+				currentIndexKeys.indexOf(k) !== -1
 			) {
 				usableQueryKeys.push(k);
 			}
 		});
-		usableQueryKeys = usableQueryKeys.filter(
-			(key) => currentIndexKeys.indexOf(key) !== -1
-		);
 		if (usableQueryKeys.length > 0) {
 			return this.indexes[usableQueryKeys[0]].getMatching(
 				query[usableQueryKeys[0]]
@@ -277,14 +276,15 @@ export class Datastore<
 		}
 
 		// possibility: using $in
-		Object.keys(query).forEach((k) => {
-			if (query[k] && query[k].hasOwnProperty("$in")) {
+		queryKeys.forEach((k) => {
+			if (
+				query[k] &&
+				query[k].hasOwnProperty("$in") &&
+				currentIndexKeys.indexOf(k) !== -1
+			) {
 				usableQueryKeys.push(k);
 			}
 		});
-		usableQueryKeys = usableQueryKeys.filter(
-			(key) => currentIndexKeys.indexOf(key) !== -1
-		);
 		if (usableQueryKeys.length > 0) {
 			return this.indexes[usableQueryKeys[0]].getMatching(
 				query[usableQueryKeys[0]].$in
@@ -292,9 +292,10 @@ export class Datastore<
 		}
 
 		// possibility: using $lt $lte $gt $gte
-		Object.keys(query).forEach((k) => {
+		queryKeys.forEach((k) => {
 			if (
 				query[k] &&
+				currentIndexKeys.indexOf(k) !== -1 &&
 				(query[k].hasOwnProperty("$lt") ||
 					query[k].hasOwnProperty("$lte") ||
 					query[k].hasOwnProperty("$gt") ||
@@ -303,9 +304,6 @@ export class Datastore<
 				usableQueryKeys.push(k);
 			}
 		});
-		usableQueryKeys = usableQueryKeys.filter(
-			(key) => currentIndexKeys.indexOf(key) !== -1
-		);
 		if (usableQueryKeys.length > 0) {
 			return this.indexes[usableQueryKeys[0]].getBetweenBounds(
 				query[usableQueryKeys[0]]
@@ -554,6 +552,11 @@ export class Datastore<
 				upsert: false,
 			};
 		} else if (res.length === 0 && upsert) {
+			if (!updateQuery.$setOnInsert) {
+				throw new Error(
+					"$setOnInsert modifier is required when upserting"
+				);
+			}
 			let toBeInserted = model.deepCopy(
 				updateQuery.$setOnInsert,
 				this.model,

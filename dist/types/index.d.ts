@@ -1,4 +1,4 @@
-export { BaseSchema } from "./base-schema";
-export { FieldLevelQueryOperators, TopLevelQueryOperators, SchemaKeyFilters, Filter, SchemaKeySort, SchemaKeyProjection, } from "./filter";
+export { BaseModel, NFP } from "./base-schema";
+export { AnyFieldLevelQueryOperators, TopLevelQueryOperators, SchemaKeyFilters, Filter, SchemaKeySort, SchemaKeyProjection, } from "./filter";
 export { Result } from "./results";
-export { UpdateOperators, UpdateOperatorsModifiers, UpdateOperatorsOnSchema, } from "./update";
+export { UpdateOperators, UpdateOperatorsOnSchema, UpsertOperators, } from "./update";

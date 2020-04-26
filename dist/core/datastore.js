@@ -1,24 +1,17 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const cursor_1 = require("./cursor");
 const customUtils = require("./customUtils");
 const indexes_1 = require("./indexes");
 const model = require("./model");
 const persistence_1 = require("./persistence");
+const base_schema_1 = require("../types/base-schema");
 const p_queue_1 = require("p-queue");
-const util = require("util");
 class Datastore {
     constructor(options) {
-        this.filename = "";
-        this.timestampData = true;
+        this.ref = "db";
+        this.timestampData = false;
         // rename to something denotes that it's an internal thing
         this.q = new p_queue_1.default({
             concurrency: 1,
@@ -28,22 +21,28 @@ class Datastore {
             _id: new indexes_1.Index({ fieldName: "_id", unique: true }),
         };
         this.ttlIndexes = {};
+        this.model = options.model || base_schema_1.BaseModel;
         if (options.ref) {
-            this.filename = options.ref;
+            this.ref = options.ref;
         }
+        const PersistenceAdapter = options.persistence_adapter || persistence_1.Persistence;
         // Persistence handling
-        this.persistence = new persistence_1.Persistence({
+        this.persistence = new PersistenceAdapter({
             db: this,
+            model: options.model,
             afterSerialization: options.afterSerialization,
             beforeDeserialization: options.beforeDeserialization,
             corruptAlertThreshold: options.corruptAlertThreshold || 0,
         });
+        if (options.timestampData) {
+            this.timestampData = true;
+        }
     }
     /**
      * Load the database from the datafile, and trigger the execution of buffered commands if any
      */
     loadDatabase() {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             return yield this.persistence.loadDatabase();
         });
     }
@@ -56,9 +55,9 @@ class Datastore {
     /**
      * Reset all currently defined indexes
      */
-    resetIndexes(newData) {
+    resetIndexes() {
         Object.keys(this.indexes).forEach((i) => {
-            this.indexes[i].reset(newData);
+            this.indexes[i].reset();
         });
     }
     /**
@@ -67,7 +66,7 @@ class Datastore {
      * We use an async API for consistency with the rest of the code
      */
     ensureIndex(options) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             options = options || {};
             if (!options.fieldName) {
                 let err = new Error("Cannot create an index without a fieldName");
@@ -91,7 +90,7 @@ class Datastore {
                 throw e;
             }
             // We may want to force all options to be persisted including defaults, not just the ones passed the index creation function
-            return yield this.persistence.persistNewState([
+            return yield this.persistence.persistByAppendNewIndex([
                 { $$indexCreated: options },
             ]);
         });
@@ -100,9 +99,9 @@ class Datastore {
      * Remove an index
      */
     removeIndex(fieldName) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             delete this.indexes[fieldName];
-            return yield this.persistence.persistNewState([
+            return yield this.persistence.persistByAppendNewIndex([
                 { $$indexRemoved: fieldName },
             ]);
         });
@@ -176,44 +175,47 @@ class Datastore {
      */
     _leastCandidates(query) {
         const currentIndexKeys = Object.keys(this.indexes);
+        const queryKeys = Object.keys(query);
         // STEP 1: get candidates list by checking indexes from most to least frequent use case
         let usableQueryKeys = [];
         // possibility: basic match
-        Object.keys(query).forEach((k) => {
+        queryKeys.forEach((k) => {
             // only types that can't be used with . notation
-            if (this._isBasicType(query[k])) {
+            if (this._isBasicType(query[k]) &&
+                currentIndexKeys.indexOf(k) !== -1) {
                 usableQueryKeys.push(k);
             }
         });
-        usableQueryKeys = usableQueryKeys.filter((key) => currentIndexKeys.indexOf(key) !== -1);
         if (usableQueryKeys.length > 0) {
             return this.indexes[usableQueryKeys[0]].getMatching(query[usableQueryKeys[0]]);
         }
         // possibility: using $eq
-        Object.keys(query).forEach((k) => {
+        queryKeys.forEach((k) => {
             if (query[k] &&
                 query[k].hasOwnProperty("$eq") &&
-                this._isBasicType(query[k].$eq)) {
+                this._isBasicType(query[k].$eq) &&
+                currentIndexKeys.indexOf(k) !== -1) {
                 usableQueryKeys.push(k);
             }
         });
-        usableQueryKeys = usableQueryKeys.filter((key) => currentIndexKeys.indexOf(key) !== -1);
         if (usableQueryKeys.length > 0) {
             return this.indexes[usableQueryKeys[0]].getMatching(query[usableQueryKeys[0]]);
         }
         // possibility: using $in
-        Object.keys(query).forEach((k) => {
-            if (query[k] && query[k].hasOwnProperty("$in")) {
+        queryKeys.forEach((k) => {
+            if (query[k] &&
+                query[k].hasOwnProperty("$in") &&
+                currentIndexKeys.indexOf(k) !== -1) {
                 usableQueryKeys.push(k);
             }
         });
-        usableQueryKeys = usableQueryKeys.filter((key) => currentIndexKeys.indexOf(key) !== -1);
         if (usableQueryKeys.length > 0) {
             return this.indexes[usableQueryKeys[0]].getMatching(query[usableQueryKeys[0]].$in);
         }
         // possibility: using $lt $lte $gt $gte
-        Object.keys(query).forEach((k) => {
+        queryKeys.forEach((k) => {
             if (query[k] &&
+                currentIndexKeys.indexOf(k) !== -1 &&
                 (query[k].hasOwnProperty("$lt") ||
                     query[k].hasOwnProperty("$lte") ||
                     query[k].hasOwnProperty("$gt") ||
@@ -221,7 +223,6 @@ class Datastore {
                 usableQueryKeys.push(k);
             }
         });
-        usableQueryKeys = usableQueryKeys.filter((key) => currentIndexKeys.indexOf(key) !== -1);
         if (usableQueryKeys.length > 0) {
             return this.indexes[usableQueryKeys[0]].getBetweenBounds(query[usableQueryKeys[0]]);
         }
@@ -237,7 +238,7 @@ class Datastore {
      * Returned candidates will be scanned to find and remove all expired documents
      */
     getCandidates(query, dontExpireStaleDocs) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             const candidates = this._leastCandidates(query);
             if (dontExpireStaleDocs) {
                 return candidates;
@@ -249,7 +250,7 @@ class Datastore {
                 let valid = true;
                 ttlIndexesFieldNames.forEach((field) => {
                     if (candidate[field] !== undefined &&
-                        util.isDate(candidate[field]) &&
+                        candidate[field] instanceof Date &&
                         Date.now() >
                             candidate[field].getTime() +
                                 this.ttlIndexes[field] * 1000) {
@@ -274,11 +275,11 @@ class Datastore {
      * Insert a new document
      */
     _insert(newDoc) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             let preparedDoc = this.prepareDocumentForInsertion(newDoc);
             this._insertInCache(preparedDoc);
-            yield this.persistence.persistNewState(util.isArray(preparedDoc) ? preparedDoc : [preparedDoc]);
-            return model.deepCopy(preparedDoc);
+            yield this.persistence.persistByAppendNewData(Array.isArray(preparedDoc) ? preparedDoc : [preparedDoc]);
+            return model.deepCopy(preparedDoc, this.model);
         });
     }
     /**
@@ -297,21 +298,21 @@ class Datastore {
      */
     prepareDocumentForInsertion(newDoc) {
         let preparedDoc = [];
-        if (util.isArray(newDoc)) {
+        if (Array.isArray(newDoc)) {
             newDoc.forEach((doc) => {
                 preparedDoc.push(this.prepareDocumentForInsertion(doc));
             });
         }
         else {
-            preparedDoc = model.deepCopy(newDoc);
+            preparedDoc = model.deepCopy(newDoc, this.model);
             if (preparedDoc._id === undefined) {
                 preparedDoc._id = this.createNewId();
             }
             const now = new Date();
-            if (preparedDoc.createdAt === undefined) {
+            if (this.timestampData && preparedDoc.createdAt === undefined) {
                 preparedDoc.createdAt = now;
             }
-            if (preparedDoc.updatedAt === undefined) {
+            if (this.timestampData && preparedDoc.updatedAt === undefined) {
                 preparedDoc.updatedAt = now;
             }
             model.checkObject(preparedDoc);
@@ -354,7 +355,7 @@ class Datastore {
         }
     }
     insert(newDoc) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             const res = yield this.q.add(() => this._insert(newDoc));
             if (Array.isArray(res)) {
                 return {
@@ -374,7 +375,7 @@ class Datastore {
      * Count all documents matching the query
      */
     count(query) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             const cursor = new cursor_1.Cursor(this, query);
             return (yield cursor.exec()).length;
         });
@@ -383,7 +384,7 @@ class Datastore {
      * Find all documents matching the query
      */
     find(query) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             const cursor = new cursor_1.Cursor(this, query);
             const docs = yield cursor.exec();
             return docs;
@@ -400,7 +401,7 @@ class Datastore {
      * Update all docs matching query
      */
     _update(query, updateQuery, options) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             let multi = options.multi !== undefined ? options.multi : false;
             let upsert = options.upsert !== undefined ? options.upsert : false;
             const cursor = new cursor_1.Cursor(this, query);
@@ -416,11 +417,13 @@ class Datastore {
                     if ((multi || numReplaced === 0) &&
                         model.match(candidates[i], query)) {
                         numReplaced++;
-                        let createdAt;
-                        createdAt = candidates[i].createdAt;
-                        let modifiedDoc = model.modify(candidates[i], updateQuery);
-                        modifiedDoc.createdAt = createdAt;
-                        if (updateQuery.updatedAt === undefined &&
+                        let createdAt = candidates[i].createdAt;
+                        let modifiedDoc = model.modify(candidates[i], updateQuery, this.model);
+                        if (createdAt) {
+                            modifiedDoc.createdAt = createdAt;
+                        }
+                        if (this.timestampData &&
+                            updateQuery.updatedAt === undefined &&
                             (!updateQuery.$set ||
                                 updateQuery.$set.updatedAt === undefined)) {
                             modifiedDoc.updatedAt = new Date();
@@ -435,25 +438,18 @@ class Datastore {
                 this.updateIndexes(modifications);
                 // Update the datafile
                 const updatedDocs = modifications.map((x) => x.newDoc);
-                yield this.persistence.persistNewState(updatedDocs);
+                yield this.persistence.persistByAppendNewData(updatedDocs);
                 return {
                     number: updatedDocs.length,
-                    docs: updatedDocs.map((x) => model.deepCopy(x)),
+                    docs: updatedDocs.map((x) => model.deepCopy(x, this.model)),
                     upsert: false,
                 };
             }
             else if (res.length === 0 && upsert) {
-                let toBeInserted;
-                try {
-                    model.checkObject(updateQuery);
-                    // updateQuery is a simple object with no modifier, use it as the document to insert
-                    toBeInserted = updateQuery;
+                if (!updateQuery.$setOnInsert) {
+                    throw new Error("$setOnInsert modifier is required when upserting");
                 }
-                catch (e) {
-                    // updateQuery contains modifiers, use the find query as the base,
-                    // strip it from all operators and update it according to updateQuery
-                    toBeInserted = model.modify(model.deepCopy(query, true), updateQuery);
-                }
+                let toBeInserted = model.deepCopy(updateQuery.$setOnInsert, this.model, true);
                 const newDoc = yield this._insert(toBeInserted);
                 if (Array.isArray(newDoc)) {
                     return {
@@ -480,7 +476,7 @@ class Datastore {
         });
     }
     update(query, updateQuery, options) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             return yield this.q.add(() => this._update(query, updateQuery, options));
         });
     }
@@ -489,7 +485,7 @@ class Datastore {
      * For now very naive implementation (similar to update)
      */
     _remove(query, options) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             let numRemoved = 0;
             const removedDocs = [];
             const removedFullDoc = [];
@@ -498,12 +494,12 @@ class Datastore {
             candidates.forEach((d) => {
                 if (model.match(d, query) && (multi || numRemoved === 0)) {
                     numRemoved++;
-                    removedFullDoc.push(model.deepCopy(d));
+                    removedFullDoc.push(model.deepCopy(d, this.model));
                     removedDocs.push({ $$deleted: true, _id: d._id });
                     this.removeFromIndexes(d);
                 }
             });
-            yield this.persistence.persistNewState(removedDocs);
+            yield this.persistence.persistByAppendNewData(removedDocs);
             return {
                 number: numRemoved,
                 docs: removedFullDoc,
@@ -511,7 +507,7 @@ class Datastore {
         });
     }
     remove(query, options) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             return this.q.add(() => this._remove(query, options));
         });
     }

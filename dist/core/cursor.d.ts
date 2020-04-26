@@ -1,9 +1,11 @@
 import { Datastore } from "./datastore";
-import { BaseSchema, SchemaKeyProjection, SchemaKeySort } from "@types";
+import { SchemaKeyProjection, SchemaKeySort } from "../types";
 /**
  * Create a new cursor for this collection
  */
-export declare class Cursor<G extends Partial<BaseSchema>> {
+export declare class Cursor<G extends {
+    _id?: string;
+}> {
     private db;
     private query;
     private _limit;

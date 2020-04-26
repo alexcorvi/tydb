@@ -1,13 +1,6 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const model = require("./model");
 /**
  * Create a new cursor for this collection
@@ -76,7 +69,7 @@ class Cursor {
                         delete toPush.$set[k];
                     }
                 });
-                toPush = model.modify({}, toPush);
+                toPush = model.modify({}, toPush, this.db.model);
             }
             else {
                 // omit-type projection
@@ -84,7 +77,7 @@ class Cursor {
                 keys.forEach((k) => {
                     toPush.$unset[k] = true;
                 });
-                toPush = model.modify(candidate, toPush);
+                toPush = model.modify(candidate, toPush, this.db.model);
             }
             if (keepId) {
                 toPush._id = candidate._id;
@@ -102,7 +95,7 @@ class Cursor {
      *
      */
     __exec_unsafe() {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             let res = [];
             let added = 0;
             let skipped = 0;
@@ -162,16 +155,16 @@ class Cursor {
         });
     }
     _exec() {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             return this.db.q.add(() => this.__exec_unsafe());
         });
     }
     exec() {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             const originalsArr = yield this._exec();
             const res = [];
             for (let index = 0; index < originalsArr.length; index++) {
-                res.push(model.deepCopy(originalsArr[index]));
+                res.push(model.deepCopy(originalsArr[index], this.db.model));
             }
             return res;
         });

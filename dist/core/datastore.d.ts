@@ -1,7 +1,7 @@
 import { Cursor } from "./cursor";
 import { Index } from "./indexes";
 import { Persistence } from "./persistence";
-import * as types from "@types";
+import * as types from "../types";
 import Q from "p-queue";
 interface EnsureIndexOptions {
     fieldName: string;
@@ -9,20 +9,25 @@ interface EnsureIndexOptions {
     sparse?: boolean;
     expireAfterSeconds?: number;
 }
-export interface DataStoreOptions {
+export interface DataStoreOptions<G> {
     ref: string;
     afterSerialization?(line: string): string;
     beforeDeserialization?(line: string): string;
     corruptAlertThreshold?: number;
+    timestampData?: boolean;
+    persistence_adapter?: typeof Persistence;
+    model?: (new () => G) & {
+        new: (json: G) => G;
+    };
 }
 interface UpdateOptions {
     multi?: boolean;
     upsert?: boolean;
 }
-export declare class Datastore<G extends Partial<types.BaseSchema> & {
+export declare class Datastore<G extends Partial<types.BaseModel> & {
     [key: string]: any;
 }> {
-    filename: string;
+    ref: string;
     timestampData: boolean;
     persistence: Persistence<G>;
     q: Q;
@@ -32,11 +37,14 @@ export declare class Datastore<G extends Partial<types.BaseSchema> & {
     ttlIndexes: {
         [key: string]: number;
     };
-    constructor(options: DataStoreOptions);
+    model: (new () => G) & {
+        new: (json: G) => G;
+    };
+    constructor(options: DataStoreOptions<G>);
     /**
      * Load the database from the datafile, and trigger the execution of buffered commands if any
      */
-    loadDatabase(): Promise<void>;
+    loadDatabase(): Promise<boolean>;
     /**
      * Get an array of all the data in the database
      */
@@ -44,7 +52,7 @@ export declare class Datastore<G extends Partial<types.BaseSchema> & {
     /**
      * Reset all currently defined indexes
      */
-    resetIndexes(newData?: any): void;
+    resetIndexes(): void;
     /**
      * Ensure an index is kept for this field. Same parameters as lib/indexes
      * For now this function is synchronous, we need to test how much time it takes

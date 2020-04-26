@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const util = require("util");
 /**
  * Check a key throw an error if the key is non valid
  * Non-treatable edge cases here: if part of the object if of the form { $$date: number } or { $$deleted: true }
@@ -27,7 +26,7 @@ function checkKey(k, v) {
  * Works by applying the above checkKey function to all fields recursively
  */
 function checkObject(obj) {
-    if (util.isArray(obj)) {
+    if (Array.isArray(obj)) {
         obj.forEach((o) => checkObject(o));
     }
     else if (typeof obj === "object" &&
@@ -95,28 +94,33 @@ exports.deserialize = deserialize;
  * The optional strictKeys flag (defaulting to false) indicates whether to copy everything or only fields
  * where the keys are valid, i.e. don't begin with $ and don't contain a .
  */
-function deepCopy(obj, strictKeys) {
+function deepCopy(obj, model, strictKeys) {
     let res = undefined;
     if (typeof obj === "boolean" ||
         typeof obj === "number" ||
         typeof obj === "string" ||
         obj === null ||
-        util.isDate(obj)) {
+        obj instanceof Date) {
         return obj;
     }
-    if (util.isArray(obj)) {
+    if (Array.isArray(obj)) {
         res = [];
-        obj.forEach((o) => res.push(deepCopy(o, strictKeys)));
+        obj.forEach((o) => res.push(deepCopy(o, model, strictKeys)));
         return res;
     }
     if (typeof obj === "object") {
         res = {};
         Object.keys(obj).forEach((k) => {
             if (!strictKeys || (k[0] !== "$" && k.indexOf(".") === -1)) {
-                res[k] = deepCopy(obj[k], strictKeys);
+                res[k] = deepCopy(obj[k], model, strictKeys);
             }
         });
-        return res;
+        if (res.hasOwnProperty("_id")) {
+            return model.new(res);
+        }
+        else {
+            return res;
+        }
     }
     return JSON.parse(JSON.stringify({ temp: obj })).temp;
 }
@@ -130,8 +134,8 @@ function isPrimitiveType(obj) {
         typeof obj === "number" ||
         typeof obj === "string" ||
         obj === null ||
-        util.isDate(obj) ||
-        util.isArray(obj));
+        obj instanceof Date ||
+        Array.isArray(obj));
 }
 exports.isPrimitiveType = isPrimitiveType;
 function compareNSB(a, b) {
@@ -200,18 +204,18 @@ function compareThings(a, b, _compareStrings) {
         return typeof a === "boolean" ? compareNSB(a, b) : 1;
     }
     // Dates
-    if (util.isDate(a)) {
-        return util.isDate(b) ? compareNSB(a.getTime(), b.getTime()) : -1;
+    if (a instanceof Date) {
+        return b instanceof Date ? compareNSB(a.getTime(), b.getTime()) : -1;
     }
-    if (util.isDate(b)) {
-        return util.isDate(a) ? compareNSB(a.getTime(), b.getTime()) : 1;
+    if (b instanceof Date) {
+        return a instanceof Date ? compareNSB(a.getTime(), b.getTime()) : 1;
     }
     // Arrays (first element is most significant and so on)
-    if (util.isArray(a)) {
-        return util.isArray(b) ? compareArrays(a, b) : -1;
+    if (Array.isArray(a)) {
+        return Array.isArray(b) ? compareArrays(a, b) : -1;
     }
-    if (util.isArray(b)) {
-        return util.isArray(a) ? compareArrays(a, b) : 1;
+    if (Array.isArray(b)) {
+        return Array.isArray(a) ? compareArrays(a, b) : 1;
     }
     // Objects
     let aKeys = Object.keys(a).sort();
@@ -261,7 +265,7 @@ const lastStepModifierFunctions = {
         if (!obj.hasOwnProperty(field)) {
             obj[field] = [];
         }
-        if (!util.isArray(obj[field])) {
+        if (!Array.isArray(obj[field])) {
             throw new Error("Can't $push an element on non-array values");
         }
         if (value !== null &&
@@ -275,14 +279,56 @@ const lastStepModifierFunctions = {
             value["$each"]) {
             const eachVal = value["$each"];
             const sliceVal = value["$slice"];
-            if (Object.keys(value).length >= 3 ||
-                (Object.keys(value).length === 2 && sliceVal === undefined)) {
-                throw new Error("Can only use $slice in conjunction with $each when $push to array");
+            const posVal = value["$position"];
+            const sortVal = value["$sort"];
+            const allKeys = Object.keys(value);
+            if (Object.keys(value).length > 1) {
+                if (allKeys.filter((x) => {
+                    return (["$each", "$slice", "$position", "$sort"].indexOf(x) === -1);
+                }).length) {
+                    throw new Error("Can only use the modifiers $slice, $position and $sort in conjunction with $each when $push to array");
+                }
             }
-            if (!util.isArray(eachVal)) {
+            if (!Array.isArray(eachVal)) {
                 throw new Error("$each requires an array value");
             }
-            eachVal.forEach((v) => obj[field].push(v));
+            if (posVal) {
+                for (let i = 0; i < eachVal.length; i++) {
+                    const element = eachVal[i];
+                    obj[field].splice(posVal + i, 0, element);
+                }
+            }
+            else {
+                eachVal.forEach((v) => obj[field].push(v));
+            }
+            if (sortVal) {
+                if (typeof sortVal === "number") {
+                    if (sortVal === 1)
+                        obj[field].sort((a, b) => compareThings(a, b));
+                    else
+                        obj[field].sort((a, b) => compareThings(b, a));
+                }
+                else {
+                    obj[field].sort((a, b) => {
+                        const keys = Object.keys(sortVal);
+                        for (let i = 0; i < keys.length; i++) {
+                            const key = keys[i];
+                            const order = sortVal[key];
+                            if (order === 1) {
+                                const comp = compareThings(a[key], b[key]);
+                                if (comp)
+                                    return comp;
+                            }
+                            else {
+                                const comp = compareThings(b[key], a[key]);
+                                if (comp)
+                                    return comp;
+                            }
+                        }
+                        return 0;
+                    });
+                }
+            }
             if (sliceVal === undefined) {
                 return;
             }
@@ -321,7 +367,7 @@ const lastStepModifierFunctions = {
         if (!obj.hasOwnProperty(field)) {
             obj[field] = [];
         }
-        if (!util.isArray(obj[field])) {
+        if (!Array.isArray(obj[field])) {
             throw new Error("Can't $addToSet an element on non-array values");
         }
         const eachVal = value["$each"];
@@ -329,7 +375,7 @@ const lastStepModifierFunctions = {
             if (Object.keys(value).length > 1) {
                 throw new Error("Can't use another field in conjunction with $each on $addToSet modifier");
             }
-            if (!util.isArray(eachVal)) {
+            if (!Array.isArray(eachVal)) {
                 throw new Error("$each requires an array value");
             }
             eachVal.forEach((v) => lastStepModifierFunctions.$addToSet(obj, field, v));
@@ -352,7 +398,7 @@ const lastStepModifierFunctions = {
      * Remove the first or last element of an array
      */
     $pop: function (obj, field, value) {
-        if (!util.isArray(obj[field])) {
+        if (!Array.isArray(obj[field])) {
             throw new Error("Can't $pop an element from non-array values");
         }
         if (typeof value !== "number") {
@@ -372,13 +418,29 @@ const lastStepModifierFunctions = {
      * Removes all instances of a value from an existing array
      */
     $pull: function (obj, field, value) {
-        if (!util.isArray(obj[field])) {
+        if (!Array.isArray(obj[field])) {
             throw new Error("Can't $pull an element from non-array values");
         }
         let arr = obj[field];
         for (let i = arr.length - 1; i >= 0; i -= 1) {
             if (match(arr[i], value)) {
                 arr.splice(i, 1);
+            }
+        }
+    },
+    /**
+     * Removes all instances of a value from an existing array
+     */
+    $pullAll: function (obj, field, value) {
+        if (!Array.isArray(obj[field])) {
+            throw new Error("Can't $pull an element from non-array values");
+        }
+        let arr = obj[field];
+        for (let i = arr.length - 1; i >= 0; i -= 1) {
+            for (let j = 0; j < value.length; j++) {
+                if (match(arr[i], value[j])) {
+                    arr.splice(i, 1);
+                }
             }
         }
     },
@@ -423,6 +485,26 @@ const lastStepModifierFunctions = {
             obj[field] = value;
         }
     },
+    $currentDate: function (obj, field, value) {
+        if (value === true) {
+            obj[field] = new Date();
+        }
+        else if (value.$type && value.$type === "timestamp") {
+            obj[field] = Date.now();
+        }
+        else if (value.$type && value.$type === "date") {
+            obj[field] = new Date();
+        }
+    },
+    $rename: function (obj, field, value) {
+        obj[value] = obj[field];
+        delete obj[field];
+    },
+    $setOnInsert: function () {
+        // if the operator reached here
+        // it means that the update was not actually an insertion.
+        // this operator is being dealt with at the datastore.ts file
+    },
 };
 // Given its name, create the complete modifier function
 function createModifierFunction(modifier) {
@@ -450,7 +532,7 @@ Object.keys(lastStepModifierFunctions).forEach(function (modifier) {
 /**
  * Modify a DB object according to an update query
  */
-function modify(obj, updateQuery) {
+function modify(obj, updateQuery, model) {
     var keys = Object.keys(updateQuery);
     let firstChars = keys.map((x) => x.charAt(0));
     let dollarFirstChars = firstChars.filter((x) => x === "$");
@@ -465,13 +547,13 @@ function modify(obj, updateQuery) {
     let newDoc;
     if (dollarFirstChars.length === 0) {
         // Simply replace the object with the update query contents
-        newDoc = deepCopy(updateQuery);
+        newDoc = deepCopy(updateQuery, model);
         newDoc._id = obj._id;
     }
     else {
         // Apply modifiers
         let modifiers = Array.from(new Set(keys));
-        newDoc = deepCopy(obj);
+        newDoc = deepCopy(obj, model);
         modifiers.forEach(function (modifier) {
             let modArgument = updateQuery[modifier];
             if (!modifierFunctions[modifier]) {
@@ -513,7 +595,7 @@ function getDotValue(obj, field) {
     if (fieldParts.length === 1) {
         return obj[fieldParts[0]];
     }
-    if (util.isArray(obj[fieldParts[0]])) {
+    if (Array.isArray(obj[fieldParts[0]])) {
         // If the next field is an integer, return only this item of the array
         let i = parseInt(fieldParts[1], 10);
         if (typeof i === "number" && !isNaN(i)) {
@@ -551,13 +633,15 @@ function areThingsEqual(a, b) {
         return a === b;
     }
     // Dates
-    if (util.isDate(a) || util.isDate(b)) {
-        return util.isDate(a) && util.isDate(b) && a.getTime() === b.getTime();
+    if (a instanceof Date || b instanceof Date) {
+        return (a instanceof Date &&
+            b instanceof Date &&
+            a.getTime() === b.getTime());
     }
     // Arrays (no match since arrays are used as a $in)
     // undefined (no match since they mean field doesn't exist and can't be serialized)
-    if ((!(util.isArray(a) && util.isArray(b)) &&
-        (util.isArray(a) || util.isArray(b))) ||
+    if ((!(Array.isArray(a) && Array.isArray(b)) &&
+        (Array.isArray(a) || Array.isArray(b))) ||
         a === undefined ||
         b === undefined) {
         return false;
@@ -591,10 +675,10 @@ exports.areThingsEqual = areThingsEqual;
 function areComparable(a, b) {
     if (typeof a !== "string" &&
         typeof a !== "number" &&
-        !util.isDate(a) &&
+        !(a instanceof Date) &&
         typeof b !== "string" &&
         typeof b !== "number" &&
-        !util.isDate(b)) {
+        !(b instanceof Date)) {
         return false;
     }
     if (typeof a !== typeof b) {
@@ -606,8 +690,33 @@ const comparisonFunctions = {};
 /**
  * Arithmetic and comparison operators
  */
+comparisonFunctions.$type = function (a, b) {
+    if (["number", "boolean", "string", "undefined"].indexOf(b) > -1) {
+        return typeof a === b;
+    }
+    else if (b === "array") {
+        return Array.isArray(a);
+    }
+    else if (b === "null") {
+        return a === null;
+    }
+    else if (b === "date") {
+        return a instanceof Date;
+    }
+    else if (b === "object") {
+        return (typeof a === "object" &&
+            !(a instanceof Date) &&
+            !(a === null) &&
+            !Array.isArray(a));
+    }
+    else
+        return false;
+};
+comparisonFunctions.$not = function (a, b) {
+    return !match({ k: a }, { k: b });
+};
 comparisonFunctions.$eq = function (a, b) {
-    return a === b;
+    return areThingsEqual(a, b);
 };
 comparisonFunctions.$lt = function (a, b) {
     return areComparable(a, b) && a < b;
@@ -621,6 +730,15 @@ comparisonFunctions.$gt = function (a, b) {
 comparisonFunctions.$gte = function (a, b) {
     return areComparable(a, b) && a >= b;
 };
+comparisonFunctions.$mod = function (a, b) {
+    if (!Array.isArray(b)) {
+        throw new Error("malformed mod, must be supplied with an array");
+    }
+    if (b.length !== 2) {
+        throw new Error("malformed mod, array length must be exactly two, a divisor and a remainder");
+    }
+    return a % b[0] === b[1];
+};
 comparisonFunctions.$ne = function (a, b) {
     if (a === undefined) {
         return true;
@@ -629,7 +747,7 @@ comparisonFunctions.$ne = function (a, b) {
 };
 comparisonFunctions.$in = function (a, b) {
     var i;
-    if (!util.isArray(b)) {
+    if (!Array.isArray(b)) {
         throw new Error("$in operator called with a non-array");
     }
     for (i = 0; i < b.length; i += 1) {
@@ -640,13 +758,13 @@ comparisonFunctions.$in = function (a, b) {
     return false;
 };
 comparisonFunctions.$nin = function (a, b) {
-    if (!util.isArray(b)) {
+    if (!Array.isArray(b)) {
         throw new Error("$nin operator called with a non-array");
     }
     return !comparisonFunctions.$in(a, b);
 };
 comparisonFunctions.$regex = function (a, b) {
-    if (!util.isRegExp(b)) {
+    if (!(b instanceof RegExp)) {
         throw new Error("$regex operator called with non regular expression");
     }
     if (typeof a !== "string") {
@@ -673,7 +791,7 @@ comparisonFunctions.$exists = function (value, exists) {
 };
 // Specific to arrays
 comparisonFunctions.$size = function (obj, value) {
-    if (!util.isArray(obj)) {
+    if (!Array.isArray(obj)) {
         return false;
     }
     if (value % 1 !== 0) {
@@ -682,7 +800,7 @@ comparisonFunctions.$size = function (obj, value) {
     return (obj.length === value);
 };
 comparisonFunctions.$elemMatch = function (obj, value) {
-    if (!util.isArray(obj)) {
+    if (!Array.isArray(obj)) {
         return false;
     }
     var i = obj.length;
@@ -696,16 +814,32 @@ comparisonFunctions.$elemMatch = function (obj, value) {
     }
     return result;
 };
+comparisonFunctions.$all = function (a, b) {
+    if (!Array.isArray(a)) {
+        throw new Error("$all must be applied on fields of type array");
+    }
+    if (!Array.isArray(b)) {
+        throw new Error("$all must be supplied with argument of type array");
+    }
+    for (let i = 0; i < b.length; i++) {
+        const elementInArgument = b[i];
+        if (a.indexOf(elementInArgument) === -1) {
+            return false;
+        }
+    }
+    return true;
+};
 const arrayComparisonFunctions = {};
 arrayComparisonFunctions.$size = true;
 arrayComparisonFunctions.$elemMatch = true;
+arrayComparisonFunctions.$all = true;
 const logicalOperators = {};
 /**
  * Match any of the subqueries
  */
 logicalOperators.$or = function (obj, query) {
     var i;
-    if (!util.isArray(query)) {
+    if (!Array.isArray(query)) {
         throw new Error("$or operator used without an array");
     }
     for (i = 0; i < query.length; i += 1) {
@@ -719,11 +853,10 @@ logicalOperators.$or = function (obj, query) {
  * Match all of the subqueries
  */
 logicalOperators.$and = function (obj, query) {
-    var i;
-    if (!util.isArray(query)) {
+    if (!Array.isArray(query)) {
         throw new Error("$and operator used without an array");
     }
-    for (i = 0; i < query.length; i += 1) {
+    for (let i = 0; i < query.length; i += 1) {
         if (!match(obj, query[i])) {
             return false;
         }
@@ -731,10 +864,18 @@ logicalOperators.$and = function (obj, query) {
     return true;
 };
 /**
- * Inverted match of the query
+ * Match non of the subqueries
  */
-logicalOperators.$not = function (obj, query) {
-    return !match(obj, query);
+logicalOperators.$nor = function (obj, query) {
+    if (!Array.isArray(query)) {
+        throw new Error("$nor operator used without an array");
+    }
+    for (let i = 0; i < query.length; i += 1) {
+        if (match(obj, query[i])) {
+            return false;
+        }
+    }
+    return true;
 };
 /**
  * Use a function to match
@@ -789,15 +930,15 @@ exports.match = match;
 function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
     const objValue = getDotValue(obj, queryKey);
     // Check if the value is an array if we don't force a treatment as value
-    if (util.isArray(objValue) && !treatObjAsValue) {
+    if (Array.isArray(objValue) && !treatObjAsValue) {
         // If the queryValue is an array, try to perform an exact match
-        if (util.isArray(queryValue)) {
+        if (Array.isArray(queryValue)) {
             return matchQueryPart(obj, queryKey, queryValue, true);
         }
         // Check if we are using an array-specific comparison function
         if (queryValue !== null &&
             typeof queryValue === "object" &&
-            !util.isRegExp(queryValue)) {
+            !(queryValue instanceof RegExp)) {
             let keys = Object.keys(queryValue);
             for (let i = 0; i < keys.length; i += 1) {
                 if (arrayComparisonFunctions[keys[i]]) {
@@ -807,6 +948,18 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
         }
         // If not, treat it as an array of { obj, query } where there needs to be at least one match
         for (let i = 0; i < objValue.length; i += 1) {
+            // edge case: using $ne on array
+            if (queryValue["$ne"]) {
+                if (objValue.indexOf(queryValue["$ne"]) !== -1) {
+                    return false;
+                }
+            }
+            if (Array.isArray(queryValue["$nin"])) {
+                const intersection = queryValue["$nin"].filter((value) => -1 !== objValue.indexOf(value));
+                if (intersection.length) {
+                    return false;
+                }
+            }
             if (matchQueryPart({ k: objValue[i] }, "k", queryValue)) {
                 return true;
             } // k here could be any string
@@ -817,8 +970,8 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
     // or only normal fields. Mixed objects are not allowed
     if (queryValue !== null &&
         typeof queryValue === "object" &&
-        !util.isRegExp(queryValue) &&
-        !util.isArray(queryValue)) {
+        !(queryValue instanceof RegExp) &&
+        !Array.isArray(queryValue)) {
         let keys = Object.keys(queryValue);
         let firstChars = keys.map((item) => item[0]);
         let dollarFirstChars = firstChars.filter((c) => c === "$");
@@ -840,7 +993,7 @@ function matchQueryPart(obj, queryKey, queryValue, treatObjAsValue) {
         }
     }
     // Using regular expressions with basic querying
-    if (util.isRegExp(queryValue)) {
+    if (queryValue instanceof RegExp) {
         return comparisonFunctions.$regex(objValue, queryValue);
     }
     // queryValue is either a native value or a normal object

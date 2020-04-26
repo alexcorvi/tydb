@@ -2585,7 +2585,7 @@ describe("Model", () => {
 			it("Subquery should not match for a $not to match", () => {
 				model.match({ a: 5, b: 10 }, { a: 5 }).should.equal(true);
 				model
-					.match({ a: 5, b: 10 }, { $not: { a: 5 } })
+					.match({ a: 5, b: 10 }, { a: { $not: 5 } })
 					.should.equal(false);
 			});
 

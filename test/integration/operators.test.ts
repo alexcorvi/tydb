@@ -33,7 +33,7 @@ class Employee extends BaseModel<Employee> {
 	}
 }
 
-describe.only("Operators tests", () => {
+describe("Operators tests", () => {
 	let dbName = "workspace/operators.db";
 
 	let db = new Database<Employee>({
@@ -839,7 +839,7 @@ describe.only("Operators tests", () => {
 				);
 				expect(JSON.stringify(doc.events)).eq(JSON.stringify([15]));
 			});
-			it.only("$pull $eq", async () => {
+			it("$pull $eq", async () => {
 				await db.update({
 					filter: { name: "john" },
 					update: {

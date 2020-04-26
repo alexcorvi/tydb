@@ -1,6 +1,6 @@
 import { AVLTree } from "./avl";
 import * as model from "./model";
-import { BaseSchema } from "@types";
+import { BaseModel } from "../types";
 interface Pair<Doc> {
     newDoc: Doc;
     oldDoc: Doc;
@@ -9,7 +9,7 @@ interface Pair<Doc> {
  * Two indexed pointers are equal iif they point to the same place
  */
 declare function checkValueEquality<T>(a: T, b: T): boolean;
-export declare class Index<Key, Doc extends Partial<BaseSchema>> {
+export declare class Index<Key, Doc extends Partial<BaseModel>> {
     fieldName: string;
     unique: boolean;
     sparse: boolean;
@@ -24,7 +24,7 @@ export declare class Index<Key, Doc extends Partial<BaseSchema>> {
         unique?: boolean;
         sparse?: boolean;
     });
-    reset(newData?: any): void;
+    reset(): void;
     /**
      * Insert a new document in the index
      * If an array is passed, we insert all its elements (if one insertion fails the index is not modified)

@@ -4,7 +4,6 @@ export { Datastore, DataStoreOptions } from "./datastore";
 export { Cursor } from "./cursor";
 export { Index } from "./indexes";
 export { Persistence } from "./persistence";
-export { storage } from "./storage";
 export { AVLTree, Node, BST } from "./avl";
 export { customUtils };
 export { model };

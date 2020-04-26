@@ -16,7 +16,7 @@ declare function checkObject(obj: Value): void;
  * Accepted primitive types: Number, String, Boolean, Date, null
  * Accepted secondary types: Objects, Arrays
  */
-declare function serialize(obj: Value): string;
+declare function serialize<T>(obj: T): string;
 /**
  * From a one-line representation of an object generate by the serialize function
  * Return the object itself
@@ -27,7 +27,9 @@ declare function deserialize(rawData: string): any;
  * The optional strictKeys flag (defaulting to false) indicates whether to copy everything or only fields
  * where the keys are valid, i.e. don't begin with $ and don't contain a .
  */
-declare function deepCopy<T>(obj: T, strictKeys?: boolean): T;
+declare function deepCopy<T>(obj: T, model: (new () => any) & {
+    new: (json: any) => any;
+}, strictKeys?: boolean): T;
 /**
  * Tells if an object is a primitive type or a "real" object
  * Arrays are considered primitive
@@ -55,7 +57,9 @@ declare function compareThings<V>(a: V, b: V, _compareStrings?: typeof compareNS
  */
 declare function modify<G extends {
     _id?: string;
-}>(obj: G, updateQuery: any): G;
+}>(obj: G, updateQuery: any, model: (new () => G) & {
+    new: (json: G) => G;
+}): G;
 /**
  * Get a value from object with dot notation
  */

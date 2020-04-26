@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const avl_1 = require("./avl");
 const model = require("./model");
-const util = require("util");
 /**
  * Two indexed pointers are equal iif they point to the same place
  */
@@ -61,11 +60,8 @@ class Index {
         }
         this.tree = new avl_1.AVLTree(this.treeOptions);
     }
-    reset(newData) {
+    reset() {
         this.tree = new avl_1.AVLTree(this.treeOptions);
-        if (newData) {
-            this.insert(newData);
-        }
     }
     /**
      * Insert a new document in the index
@@ -73,7 +69,7 @@ class Index {
      * O(log(n))
      */
     insert(doc) {
-        if (util.isArray(doc)) {
+        if (Array.isArray(doc)) {
             this.insertMultipleDocs(doc);
             return;
         }
@@ -82,7 +78,7 @@ class Index {
         if (key === undefined && this.sparse) {
             return;
         }
-        if (!util.isArray(key)) {
+        if (!Array.isArray(key)) {
             this.tree.insert(key, doc);
         }
         else {
@@ -140,7 +136,7 @@ class Index {
      * O(log(n))
      */
     remove(doc) {
-        if (util.isArray(doc)) {
+        if (Array.isArray(doc)) {
             doc.forEach((d) => this.remove(d));
             return;
         }
@@ -148,7 +144,7 @@ class Index {
         if (key === undefined && this.sparse) {
             return;
         }
-        if (!util.isArray(key)) {
+        if (!Array.isArray(key)) {
             this.tree.delete(key, doc);
         }
         else {
@@ -161,7 +157,7 @@ class Index {
      * Naive implementation, still in O(log(n))
      */
     update(oldDoc, newDoc) {
-        if (util.isArray(oldDoc)) {
+        if (Array.isArray(oldDoc)) {
             this.updateMultipleDocs(oldDoc);
             return;
         }
@@ -213,7 +209,6 @@ class Index {
      */
     revertUpdate(oldDoc, newDoc) {
         var revert = [];
-        // convert all util.isArray to Array.isArray
         if (!Array.isArray(oldDoc) && newDoc) {
             this.update(newDoc, oldDoc);
         }
@@ -228,7 +223,7 @@ class Index {
      * Get all documents in index whose key match value (if it is a Thing) or one of the elements of value (if it is an array of Things)
      */
     getMatching(key) {
-        if (!util.isArray(key)) {
+        if (!Array.isArray(key)) {
             return this.tree.search(key);
         }
         else {

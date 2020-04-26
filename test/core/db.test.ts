@@ -945,7 +945,7 @@ describe("Database", function () {
 				{
 					const update = await d.update(
 						{},
-						{ a: "x" },
+						{ a: "x", $setOnInsert: { a: "x" } },
 						{ upsert: true }
 					);
 					update.upsert.should.equal(true);
@@ -973,6 +973,10 @@ describe("Database", function () {
 					{
 						hello: "world",
 						bloup: "blap",
+						$setOnInsert: {
+							hello: "world",
+							bloup: "blap",
+						},
 					},
 					{ upsert: true }
 				);
@@ -991,6 +995,10 @@ describe("Database", function () {
 					{
 						$set: { hello: "world" },
 						$inc: { bloup: 3 },
+						$setOnInsert: {
+							hello: "world",
+							bloup: 3,
+						},
 					},
 					{ upsert: true }
 				);
@@ -1002,27 +1010,7 @@ describe("Database", function () {
 				doc.hello.should.equal("world");
 				doc.bloup.should.equal(3);
 			});
-			it("If the update query contains modifiers, it is applied to the object resulting from removing all operators from the find query 2", async () => {
-				await d.update(
-					{
-						$or: [{ a: 4 }, { a: 5 }],
-						cac: "rrr",
-					},
-					{
-						$set: { hello: "world" },
-						$inc: { bloup: 3 },
-					},
-					{ upsert: true }
-				);
-				const docs = await d.find({ hello: "world" });
-				docs.length.should.equal(1);
-				const doc = docs[0];
-				Object.keys(doc).length.should.equal(4);
-				doc.cac.should.equal("rrr");
-				doc.hello.should.equal("world");
-				doc.bloup.should.equal(3);
-			});
-			it("Performing upsert with badly formatted fields yields a standard error not an exception", async () => {
+			it("Performing upsert without $setOnInsert yields a standard error not an exception", async () => {
 				await expect(
 					d.update(
 						{ _id: "1234" },
@@ -1076,11 +1064,17 @@ describe("Database", function () {
 			doc.something.should.equal("changed");
 			doc.other.should.equal(50);
 		});
-		it("Can upsert a document even with modifiers", async () => {
+		it("CUpserting using $setOnInsert", async () => {
 			const n = (
 				await d.update(
 					{ bloup: "blap" },
-					{ $set: { hello: "world" } },
+					{
+						$set: { hello: "world" },
+						$setOnInsert: {
+							bloup: "blap",
+							hello: "world",
+						},
+					},
 					{ upsert: true }
 				)
 			).number;
