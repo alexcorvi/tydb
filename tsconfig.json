@@ -1,23 +1,19 @@
 {
 	"compilerOptions": {
-		"outDir": "./dist/",
+		"outDir": "dist",
 		"noImplicitAny": true,
 		"strictNullChecks": true,
-		"module": "commonjs",
+		"module": "es6",
 		"target": "es6",
 		"forceConsistentCasingInFileNames": true,
 		"newLine": "LF",
+		"declaration": true,
 		"noImplicitThis": true,
 		"pretty": true,
 		"strict": true,
-		"declaration": true,
 		"removeComments": false,
 		"skipLibCheck": true,
-		"baseUrl": "./",
-		"paths": {
-			"@core": ["src/core"],
-			"@types": ["src/types"]
-		}
+		"importHelpers": true
 	},
 	"include": ["./src/**/*"],
 	"exclude": ["node_modules"]
