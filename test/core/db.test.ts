@@ -421,6 +421,40 @@ describe("Database", function () {
 				tf: 9,
 			});
 		});
+		it("Can use an index to get docs with a $eq match", async () => {
+			await d.ensureIndex({ fieldName: "tf" });
+			const _doc1 = (await d.insert({ tf: 4 })).docs[0];
+			await d.insert({ tf: 6 });
+			const _doc2 = (
+				await d.insert({
+					tf: 4,
+					an: "other",
+				})
+			).docs[0];
+			await d.insert({ tf: 9 });
+			const data = await d.getCandidates({
+				r: 6,
+				tf: {
+					$eq: 4,
+				},
+			});
+			var doc1 = _.find(data, function (d) {
+					return d._id === _doc1._id;
+				}),
+				doc2 = _.find(data, function (d) {
+					return d._id === _doc2._id;
+				});
+			data.length.should.equal(2);
+			assert.deepEqual(doc1, {
+				_id: doc1._id,
+				tf: 4,
+			});
+			assert.deepEqual(doc2, {
+				_id: doc2._id,
+				tf: 4,
+				an: "other",
+			});
+		});
 		it("If no index can be used, return the whole database", async () => {
 			await d.ensureIndex({ fieldName: "tf" });
 			const _doc1 = (await d.insert({ tf: 4 })).docs[0];

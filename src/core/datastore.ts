@@ -271,7 +271,7 @@ export class Datastore<
 		});
 		if (usableQueryKeys.length > 0) {
 			return this.indexes[usableQueryKeys[0]].getMatching(
-				query[usableQueryKeys[0]]
+				query[usableQueryKeys[0]].$eq
 			);
 		}
 
