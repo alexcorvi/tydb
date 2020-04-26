@@ -10,7 +10,7 @@
 	"scripts": {
 		"test": "mocha",
 		"gendec": "tsc --emitDeclarationOnly",
-		"build": "rollup -c && tsc --emitDeclarationOnly",
+		"build": "rm -rf ./dist && rollup -c && tsc --emitDeclarationOnly",
 		"benchmark": "node benchmark"
 	},
 	"keywords": [
