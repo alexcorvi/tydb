@@ -52,7 +52,7 @@ export class Database<S extends BaseModel<S>> {
 	}
 
 	/**
-	 * Put one document
+	 * insert documents
 	 */
 	public async insert(docs: S[]): Promise<{ docs: S[]; number: number }> {
 		const res = await this._datastore.insert(docs as any);
@@ -60,7 +60,7 @@ export class Database<S extends BaseModel<S>> {
 	}
 
 	/**
-	 * Find documents that meets a specified criteria
+	 * Find document(s) that meets a specified criteria
 	 */
 	public async read({
 		filter,
@@ -95,7 +95,7 @@ export class Database<S extends BaseModel<S>> {
 	}
 
 	/**
-	 * Update many documents that meets the specified criteria
+	 * Update document(s) that meets the specified criteria
 	 */
 	public async update({
 		filter,
@@ -121,8 +121,8 @@ export class Database<S extends BaseModel<S>> {
 	}
 
 	/**
-	 * Update documents that meets the specified criteria,
-	 * and insert the update query if no documents are matched
+	 * Update document(s) that meets the specified criteria,
+	 * and do an insertion if no documents are matched
 	 */
 	public async upsert({
 		filter,
@@ -156,7 +156,7 @@ export class Database<S extends BaseModel<S>> {
 	}
 
 	/**
-	 * Delete many documents that meets the specified criteria
+	 * Delete document(s) that meets the specified criteria
 	 *
 	 */
 	public async delete({

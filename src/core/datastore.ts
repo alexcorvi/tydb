@@ -239,7 +239,6 @@ export class Datastore<
 		const currentIndexKeys = Object.keys(this.indexes);
 		const queryKeys = Object.keys(query);
 
-		// STEP 1: get candidates list by checking indexes from most to least frequent use case
 		let usableQueryKeys: string[] = [];
 
 		// possibility: basic match
@@ -309,7 +308,6 @@ export class Datastore<
 				query[usableQueryKeys[0]]
 			);
 		}
-
 		return this.getAllData();
 	}
 
