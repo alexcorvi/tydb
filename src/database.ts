@@ -1,4 +1,4 @@
-import { Datastore, Persistence } from "./core";
+import { Datastore, EnsureIndexOptions, Persistence } from "./core";
 import {
 	NFP,
 	BaseModel,
@@ -185,6 +185,22 @@ export class Database<S extends BaseModel<S>> {
 			multi: multi || false,
 		});
 		return res;
+	}
+
+	/**
+	 * Create an index specified by options
+	 */
+	public async createIndex(options: EnsureIndexOptions) {
+		await this.reloadFirst();
+		await this._datastore.ensureIndex(options);
+	}
+
+	/**
+	 * Remove an index by passing the field name that it is related to
+	 */
+	public async removeIndex(fieldName: string) {
+		await this.reloadFirst();
+		await this._datastore.removeIndex(fieldName);
 	}
 
 	async reload() {

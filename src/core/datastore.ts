@@ -7,7 +7,7 @@ import * as types from "../types";
 import { BaseModel } from "../types/base-schema";
 import Q from "p-queue";
 
-interface EnsureIndexOptions {
+export interface EnsureIndexOptions {
 	fieldName: string;
 	unique?: boolean;
 	sparse?: boolean;
