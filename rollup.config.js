@@ -19,10 +19,9 @@ export default [
 			{
 				name: "replacer",
 				transform: function (code) {
-					code = code.replace(
-						`//$__IMPORT_IDB`,
-						`export { IDB_Persistence_Adapter } from "./adapters/indexeddb";`
-					);
+					// keep only IDB when in browser
+					code = code.replace(/^(.*)\/\/__IMPORT_IDB/gim, `$1`);
+					code = code.replace(/^(.*)\/\/__IMPORT_FS/gim, ``);
 					return { code };
 				},
 			},
@@ -42,14 +41,8 @@ export default [
 				name: "replacer",
 				transform: function (code) {
 					// include both when in node
-					code = code.replace(
-						`//$__IMPORT_IDB`,
-						`export { IDB_Persistence_Adapter } from "./adapters/indexeddb";`
-					);
-					code = code.replace(
-						`//$__IMPORT_FS`,
-						`export { FS_Persistence_Adapter } from "./adapters/fs-adapter";`
-					);
+					code = code.replace(/^(.*)\/\/__IMPORT_IDB/gim, `$1`);
+					code = code.replace(/^(.*)\/\/__IMPORT_FS/gim, `$1`);
 					return { code };
 				},
 			},
