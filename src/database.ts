@@ -53,7 +53,6 @@ export class Database<S extends BaseModel<S>> {
 			);
 		}
 	}
-
 	private async reloadFirst() {
 		if (!this.reloadBeforeOperations) return;
 		await this.reload();
@@ -203,18 +202,30 @@ export class Database<S extends BaseModel<S>> {
 		await this._datastore.removeIndex(fieldName);
 	}
 
+	/**
+	 * Reload database from the persistence layer (if it exists)
+	 */
 	async reload() {
 		await this._datastore.persistence.loadDatabase();
 	}
 
+	/**
+	 * Compact the database persistence layer
+	 */
 	async compact() {
 		await this._datastore.persistence.compactDatafile();
 	}
 
+	/**
+	 * Stop auto compaction of the persistence layer
+	 */
 	stopAutoCompaction() {
 		this._datastore.persistence.stopAutocompaction();
 	}
 
+	/**
+	 * Set auto compaction defined by an an interval
+	 */
 	resetAutoCompaction(interval: number) {
 		this._datastore.persistence.setAutocompactionInterval(interval);
 	}
