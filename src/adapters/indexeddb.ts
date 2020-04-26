@@ -14,7 +14,7 @@ function hash(input: string) {
 	return hash.toString();
 }
 
-class IDB_Persistence_Adapter extends Base {
+export class IDB_Persistence_Adapter extends Base {
 	async init() {
 		databases["data"] = new idb.Store(this.ref, "data");
 		databases["indexes"] = new idb.Store(this.ref, "indexes");
