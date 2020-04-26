@@ -1,6 +1,7 @@
 export { Database } from "./database";
 export { BaseModel } from "./types/base-schema";
 
-// below lines are going to be replaced in build process
-//$__IMPORT_IDB
-//$__IMPORT_FS
+export { IDB_Persistence_Adapter } from "./adapters/indexeddb"; //__IMPORT_IDB
+export { FS_Persistence_Adapter } from "./adapters/fs-adapter"; //__IMPORT_FS
+
+// ^ the above twp lines will be modified during build. check rollup.config.js
