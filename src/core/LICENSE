@@ -1,4 +1,6 @@
-(The MIT License)
+TyDB core is actually NeDB rewritten in Typescript.
+
+# NeDB License - (The MIT License)
 
 Copyright (c) 2013 Louis Chatriot &lt;louis.chatriot@gmail.com&gt;
 
