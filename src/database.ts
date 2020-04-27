@@ -39,7 +39,7 @@ export class Database<S extends BaseModel<S>> {
 			(BaseModel as (new () => S) & {
 				new: (json: S) => S;
 			});
-		if (options.ref.startsWith("dina://")) {
+		if (options.ref.startsWith("tydb://")) {
 			// using an external instance
 			this.ref = options.ref.substr(7);
 			this.loaded = new Promise(() => true);

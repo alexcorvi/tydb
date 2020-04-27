@@ -24,7 +24,7 @@ class MyModel extends BaseModel {
 }
 
 let db = new Database<MyModel>({
-	ref: "dina://http://localhost:3000",
+	ref: "tydb://http://localhost:3000",
 	model: MyModel,
 });
 
