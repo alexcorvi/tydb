@@ -3590,7 +3590,7 @@ class Database {
         this.model =
             options.model ||
                 BaseModel;
-        if (options.ref.startsWith("dina://")) {
+        if (options.ref.startsWith("tydb://")) {
             // using an external instance
             this.ref = options.ref.substr(7);
             this.loaded = new Promise(() => true);

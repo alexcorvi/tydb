@@ -3884,7 +3884,7 @@ class Database {
         this.model =
             options.model ||
                 BaseModel;
-        if (options.ref.startsWith("dina://")) {
+        if (options.ref.startsWith("tydb://")) {
             // using an external instance
             this.ref = options.ref.substr(7);
             this.loaded = new Promise(() => true);
@@ -4151,7 +4151,6 @@ function fixDeep(input) {
 
 let configFile = process.argv.find((x) => x.endsWith(".db.js"));
 let configs = null;
-let db = new Database({ ref: "temp" });
 {
     // path & argument
     if (!configFile) {
@@ -4172,8 +4171,12 @@ let db = new Database({ ref: "temp" });
         process.exit(1);
     }
     else {
-        if (!configs.ref || typeof configs.ref !== "string") {
-            console.error(`Error: "ref" in configuration file is required, and should be a string`);
+        if (!configs.refs || typeof configs.refs !== "object") {
+            console.error(`Error: "refs" in configuration file is required, and should be a string`);
+            process.exit(1);
+        }
+        if (Object.keys(configs.refs).length === 0) {
+            console.error(`Error: "refs" in configuration file must have key value property (or properties) that refer to databases`);
             process.exit(1);
         }
         if (!configs.fastify) {
@@ -4191,18 +4194,21 @@ let db = new Database({ ref: "temp" });
         if (!configs.persistence_adapter) {
             configs.persistence_adapter = FS_Persistence_Adapter;
         }
-        db = new Database(configs);
     }
 }
+const databases = {};
+Object.keys(configs.refs).forEach((namespace) => {
+    databases[namespace] = new Database(Object.assign(configs, { ref: configs.refs[namespace] }));
+});
 const server = fastify(configs.fastify.server);
 if (configs.fastify.cors) {
     server.register(cors, configs.fastify.cors);
 }
-server.post("/insert", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/insert", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.array.ofType(ow.object));
-        res = yield db.insert(request.body);
+        res = yield databases[request.params["namespace"]].insert(request.body);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4215,7 +4221,7 @@ server.post("/insert", (request, reply) => __awaiter(void 0, void 0, void 0, fun
     }
     return res;
 }));
-server.post("/read", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/read", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.object.exactShape({
@@ -4225,7 +4231,7 @@ server.post("/read", (request, reply) => __awaiter(void 0, void 0, void 0, funct
             sort: ow.optional.object,
             project: ow.optional.object,
         }));
-        res = yield db.find(request.body);
+        res = yield databases[request.params["namespace"]].find(request.body);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4238,7 +4244,7 @@ server.post("/read", (request, reply) => __awaiter(void 0, void 0, void 0, funct
     }
     return res;
 }));
-server.post("/update", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/update", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.object.exactShape({
@@ -4246,7 +4252,7 @@ server.post("/update", (request, reply) => __awaiter(void 0, void 0, void 0, fun
             update: ow.object,
             multi: ow.optional.boolean,
         }));
-        res = yield db.update(request.body);
+        res = yield databases[request.params["namespace"]].update(request.body);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4259,7 +4265,7 @@ server.post("/update", (request, reply) => __awaiter(void 0, void 0, void 0, fun
     }
     return res;
 }));
-server.post("/upsert", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/upsert", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.object.exactShape({
@@ -4267,7 +4273,7 @@ server.post("/upsert", (request, reply) => __awaiter(void 0, void 0, void 0, fun
             update: ow.object,
             multi: ow.optional.boolean,
         }));
-        res = yield db.upsert(request.body);
+        res = yield databases[request.params["namespace"]].upsert(request.body);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4280,11 +4286,11 @@ server.post("/upsert", (request, reply) => __awaiter(void 0, void 0, void 0, fun
     }
     return res;
 }));
-server.post("/count", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/count", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.object);
-        res = yield db.count(request.body);
+        res = yield databases[request.params["namespace"]].count(request.body);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4297,14 +4303,14 @@ server.post("/count", (request, reply) => __awaiter(void 0, void 0, void 0, func
     }
     return res;
 }));
-server.post("/delete", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/delete", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.object.exactShape({
             filter: ow.object,
             multi: ow.optional.boolean,
         }));
-        res = yield db.delete(request.body);
+        res = yield databases[request.params["namespace"]].delete(request.body);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4317,13 +4323,13 @@ server.post("/delete", (request, reply) => __awaiter(void 0, void 0, void 0, fun
     }
     return res;
 }));
-server.post("/removeIndex", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/removeIndex", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.object.exactShape({
             fieldName: ow.string,
         }));
-        res = yield db.removeIndex(request.body.fieldName);
+        res = yield databases[request.params["namespace"]].removeIndex(request.body.fieldName);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4336,7 +4342,7 @@ server.post("/removeIndex", (request, reply) => __awaiter(void 0, void 0, void 0
     }
     return res;
 }));
-server.post("/createIndex", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/createIndex", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.object.exactShape({
@@ -4345,7 +4351,7 @@ server.post("/createIndex", (request, reply) => __awaiter(void 0, void 0, void 0
             sparse: ow.optional.boolean,
             expireAfterSeconds: ow.optional.number,
         }));
-        res = yield db.createIndex(request.body);
+        res = yield databases[request.params["namespace"]].createIndex(request.body);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4358,10 +4364,10 @@ server.post("/createIndex", (request, reply) => __awaiter(void 0, void 0, void 0
     }
     return res;
 }));
-server.post("/reload", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/reload", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
-        res = yield db.reload();
+        res = yield databases[request.params["namespace"]].reload();
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4374,10 +4380,10 @@ server.post("/reload", (request, reply) => __awaiter(void 0, void 0, void 0, fun
     }
     return res;
 }));
-server.post("/compact", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/compact", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
-        res = yield db.compact();
+        res = yield databases[request.params["namespace"]].compact();
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4390,10 +4396,10 @@ server.post("/compact", (request, reply) => __awaiter(void 0, void 0, void 0, fu
     }
     return res;
 }));
-server.post("/forcefulUnlock", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/forcefulUnlock", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
-        res = yield db.forcefulUnlock();
+        res = yield databases[request.params["namespace"]].forcefulUnlock();
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4406,10 +4412,10 @@ server.post("/forcefulUnlock", (request, reply) => __awaiter(void 0, void 0, voi
     }
     return res;
 }));
-server.post("/stopAutoCompaction", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/stopAutoCompaction", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
-        res = db.stopAutoCompaction();
+        res = databases[request.params["namespace"]].stopAutoCompaction();
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4422,13 +4428,13 @@ server.post("/stopAutoCompaction", (request, reply) => __awaiter(void 0, void 0,
     }
     return res;
 }));
-server.post("/resetAutoCompaction", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+server.post("/:namespace/resetAutoCompaction", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     let res;
     try {
         ow(request.body, ow.object.exactShape({
             interval: ow.number,
         }));
-        res = db.resetAutoCompaction(request.body.interval);
+        res = databases[request.params["namespace"]].resetAutoCompaction(request.body.interval);
         reply.type("application/json").code(200);
     }
     catch (e) {
@@ -4443,7 +4449,23 @@ server.post("/resetAutoCompaction", (request, reply) => __awaiter(void 0, void 0
 }));
 server.get("/", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
     reply.type("application/json").code(200);
-    return { dinadb: "welcome", status: "ok", version: "0.5.3" };
+    return { tydb: "welcome", status: "ok", version: "0.5.3" };
+}));
+server.get("/:namespace", (request, reply) => __awaiter(void 0, void 0, void 0, function* () {
+    reply.type("application/json").code(200);
+    const namespace = request.params["namespace"];
+    console.log(namespace);
+    return {
+        tydb: "welcome",
+        dbNamespace: namespace,
+        databaseFound: databases.hasOwnProperty(namespace),
+        datafile: databases.hasOwnProperty(namespace)
+            ? path.resolve(configs.refs[namespace])
+            : "",
+        indexesFile: databases.hasOwnProperty(namespace)
+            ? path.resolve(configs.refs[namespace]) + ".idx.db"
+            : "",
+    };
 }));
 server.listen(configs.fastify.listen, (err, address) => {
     if (err)
