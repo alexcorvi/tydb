@@ -5,7 +5,8 @@
 </p>
 
 Strongly-typed, fast, light-weight, embedded, Mongo-like database with built-in ODM.
-[Full Documentation](https://alex-corvi.gitbook.io/tydb/)
+
+[Documentation & Getting started](https://alex-corvi.gitbook.io/tydb/)
 
 ## Introduction
 
