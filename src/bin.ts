@@ -6,7 +6,10 @@ import * as fs from "fs";
 import ow from "ow";
 import * as path from "path";
 
-interface ConfigFile extends DatabaseConfigurations<any> {
+interface ConfigFile {
+	databases: {
+		[key: string]: DatabaseConfigurations<any>;
+	};
 	fastify: {
 		server: fastify.ServerOptions;
 		listen: fastify.ListenOptions;
@@ -16,7 +19,6 @@ interface ConfigFile extends DatabaseConfigurations<any> {
 
 let configFile = process.argv.find((x) => x.endsWith(".db.js"));
 let configs: ConfigFile | null = null;
-let db = new Database({ ref: "temp" });
 
 {
 	// path & argument
@@ -39,9 +41,15 @@ let db = new Database({ ref: "temp" });
 		console.error(`Error: Configuration file does not export anything`);
 		process.exit(1);
 	} else {
-		if (!configs.ref || typeof configs.ref !== "string") {
+		if (!configs.databases || typeof configs.databases !== "object") {
 			console.error(
-				`Error: "ref" in configuration file is required, and should be a string`
+				`Error: "databases" in configuration file is required, and should be a string`
+			);
+			process.exit(1);
+		}
+		if (Object.keys(configs.databases).length === 0) {
+			console.error(
+				`Error: "databases" in configuration file must have key value property (or properties) that refer to databases`
 			);
 			process.exit(1);
 		}
@@ -61,24 +69,32 @@ let db = new Database({ ref: "temp" });
 			);
 			process.exit(1);
 		}
-
-		if (!configs.persistence_adapter) {
-			configs.persistence_adapter = FS_Persistence_Adapter;
-		}
-
-		db = new Database(configs);
 	}
 }
+
+const databases: {
+	[key: string]: Database<any>;
+} = {};
+
+Object.keys(configs.databases).forEach((namespace) => {
+	if (!configs!.databases[namespace]) {
+		console.error(
+			`Error: namespace ${namespace} in configuration file does not have a "ref" property, "ref" property is required for all namespaces`
+		);
+		process.exit(1);
+	}
+	databases[namespace] = new Database(configs!.databases[namespace]);
+});
 
 const server = fastify(configs.fastify.server);
 if (configs.fastify.cors) {
 	server.register(cors, configs.fastify.cors);
 }
-server.post("/insert", async (request, reply) => {
+server.post("/:namespace/insert", async (request, reply) => {
 	let res;
 	try {
 		ow(request.body, ow.array.ofType(ow.object));
-		res = await db.insert(request.body);
+		res = await databases[request.params["namespace"]].insert(request.body);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -90,7 +106,7 @@ server.post("/insert", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/read", async (request, reply) => {
+server.post("/:namespace/read", async (request, reply) => {
 	let res;
 	try {
 		ow(
@@ -103,7 +119,7 @@ server.post("/read", async (request, reply) => {
 				project: ow.optional.object,
 			})
 		);
-		res = await db.find(request.body);
+		res = await databases[request.params["namespace"]].find(request.body);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -115,7 +131,7 @@ server.post("/read", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/update", async (request, reply) => {
+server.post("/:namespace/update", async (request, reply) => {
 	let res;
 	try {
 		ow(
@@ -126,7 +142,7 @@ server.post("/update", async (request, reply) => {
 				multi: ow.optional.boolean,
 			})
 		);
-		res = await db.update(request.body);
+		res = await databases[request.params["namespace"]].update(request.body);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -138,7 +154,7 @@ server.post("/update", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/upsert", async (request, reply) => {
+server.post("/:namespace/upsert", async (request, reply) => {
 	let res;
 	try {
 		ow(
@@ -149,7 +165,7 @@ server.post("/upsert", async (request, reply) => {
 				multi: ow.optional.boolean,
 			})
 		);
-		res = await db.upsert(request.body);
+		res = await databases[request.params["namespace"]].upsert(request.body);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -161,11 +177,11 @@ server.post("/upsert", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/count", async (request, reply) => {
+server.post("/:namespace/count", async (request, reply) => {
 	let res;
 	try {
 		ow(request.body, ow.object);
-		res = await db.count(request.body);
+		res = await databases[request.params["namespace"]].count(request.body);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -177,7 +193,7 @@ server.post("/count", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/delete", async (request, reply) => {
+server.post("/:namespace/delete", async (request, reply) => {
 	let res;
 	try {
 		ow(
@@ -187,7 +203,7 @@ server.post("/delete", async (request, reply) => {
 				multi: ow.optional.boolean,
 			})
 		);
-		res = await db.delete(request.body);
+		res = await databases[request.params["namespace"]].delete(request.body);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -199,7 +215,7 @@ server.post("/delete", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/removeIndex", async (request, reply) => {
+server.post("/:namespace/removeIndex", async (request, reply) => {
 	let res;
 	try {
 		ow(
@@ -208,7 +224,9 @@ server.post("/removeIndex", async (request, reply) => {
 				fieldName: ow.string,
 			})
 		);
-		res = await db.removeIndex(request.body.fieldName);
+		res = await databases[request.params["namespace"]].removeIndex(
+			request.body.fieldName
+		);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -220,7 +238,7 @@ server.post("/removeIndex", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/createIndex", async (request, reply) => {
+server.post("/:namespace/createIndex", async (request, reply) => {
 	let res;
 	try {
 		ow(
@@ -232,7 +250,9 @@ server.post("/createIndex", async (request, reply) => {
 				expireAfterSeconds: ow.optional.number,
 			})
 		);
-		res = await db.createIndex(request.body);
+		res = await databases[request.params["namespace"]].createIndex(
+			request.body
+		);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -244,10 +264,10 @@ server.post("/createIndex", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/reload", async (request, reply) => {
+server.post("/:namespace/reload", async (request, reply) => {
 	let res;
 	try {
-		res = await db.reload();
+		res = await databases[request.params["namespace"]].reload();
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -259,10 +279,10 @@ server.post("/reload", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/compact", async (request, reply) => {
+server.post("/:namespace/compact", async (request, reply) => {
 	let res;
 	try {
-		res = await db.compact();
+		res = await databases[request.params["namespace"]].compact();
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -274,10 +294,10 @@ server.post("/compact", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/forcefulUnlock", async (request, reply) => {
+server.post("/:namespace/forcefulUnlock", async (request, reply) => {
 	let res;
 	try {
-		res = await db.forcefulUnlock();
+		res = await databases[request.params["namespace"]].forcefulUnlock();
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -289,10 +309,10 @@ server.post("/forcefulUnlock", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/stopAutoCompaction", async (request, reply) => {
+server.post("/:namespace/stopAutoCompaction", async (request, reply) => {
 	let res;
 	try {
-		res = db.stopAutoCompaction();
+		res = databases[request.params["namespace"]].stopAutoCompaction();
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -304,7 +324,7 @@ server.post("/stopAutoCompaction", async (request, reply) => {
 	}
 	return res;
 });
-server.post("/resetAutoCompaction", async (request, reply) => {
+server.post("/:namespace/resetAutoCompaction", async (request, reply) => {
 	let res;
 	try {
 		ow(
@@ -313,7 +333,9 @@ server.post("/resetAutoCompaction", async (request, reply) => {
 				interval: ow.number,
 			})
 		);
-		res = db.resetAutoCompaction(request.body.interval);
+		res = databases[request.params["namespace"]].resetAutoCompaction(
+			request.body.interval
+		);
 		reply.type("application/json").code(200);
 	} catch (e) {
 		reply.type("application/json").code(500);
@@ -331,7 +353,28 @@ server.get("/", async (request, reply) => {
 	return { tydb: "welcome", status: "ok", version: "0.5.3" };
 });
 
+server.get("/:namespace", async (request, reply) => {
+	reply.type("application/json").code(200);
+	const namespace = request.params["namespace"];
+	return {
+		tydb: "welcome",
+		dbNamespace: namespace,
+		databaseFound: databases.hasOwnProperty(namespace),
+		datafile: databases.hasOwnProperty(namespace)
+			? path.resolve(configs!.databases[namespace].ref)
+			: "",
+		indexesFile: databases.hasOwnProperty(namespace)
+			? path.resolve(configs!.databases[namespace].ref) + ".idx.db"
+			: "",
+	};
+});
+
 server.listen(configs.fastify.listen, (err, address) => {
 	if (err) throw err;
-	server.log.info(`server listening on ${address}`);
+	server.log.info(`Server listening on ${address}`);
+	server.log.info(
+		`Databases are: ${Object.keys(databases)
+			.map((x) => address + "/" + x)
+			.join(" ")}`
+	);
 });

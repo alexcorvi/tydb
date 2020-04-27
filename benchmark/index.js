@@ -15,7 +15,7 @@ const reload = new lib.Database({
 	reloadBeforeOperations: true,
 });
 const extrnl = new lib.Database({
-	ref: "tydb://http://localhost:3000",
+	ref: "tydb://http://localhost:3000/mydb",
 });
 
 let id = "";
