@@ -1,12 +1,10 @@
-# TyDB
-
-Strongly-typed, fast, light-weight, embedded, Mongo-like database with built-in ODM.
-
 <p align="center">
 	<img src="src/logo.ts.png" width="300">
 	<br>
 	<br>
 </p>
+
+Strongly-typed, fast, light-weight, embedded, Mongo-like database with built-in ODM.
 [Full Documentation](https://alex-corvi.gitbook.io/tydb/)
 
 ## Introduction
