@@ -1,7 +1,7 @@
 import { Cursor, Datastore } from "../../src/core";
 import { BaseModel } from "../../src/types/base-schema";
 import { assert, expect, should, use } from "chai";
-import * as asPromised from "chai-as-promised";
+import asPromised from "chai-as-promised";
 import * as _ from "underscore";
 use(asPromised);
 should();
