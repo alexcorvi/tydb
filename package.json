@@ -1,6 +1,6 @@
 {
 	"name": "tydb",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "An Abstraction layer for mongodb for ease of use with TypeScript",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
