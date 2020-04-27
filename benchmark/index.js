@@ -14,6 +14,9 @@ const reload = new lib.Database({
 	persistence_adapter: lib.FS_Persistence_Adapter,
 	reloadBeforeOperations: true,
 });
+const extrnl = new lib.Database({
+	ref: "dina://http://localhost:3000",
+});
 
 let id = "";
 
@@ -111,6 +114,38 @@ suite
 		defer: true,
 		fn: async function (deferred) {
 			await reload.delete({ filter: { _id: id } });
+			deferred.resolve();
+		},
+	})
+	.add("extrnl | create | ", {
+		defer: true,
+		fn: async function (deferred) {
+			const res = await extrnl.insert([{ name: "john", age: 22 }]);
+			id = res.docs[0]._id;
+			deferred.resolve();
+		},
+	})
+	.add("extrnl | update | ", {
+		defer: true,
+		fn: async function (deferred) {
+			await extrnl.update({
+				filter: { _id: id },
+				update: { name: "alex" },
+			});
+			deferred.resolve();
+		},
+	})
+	.add("extrnl | lookup | ", {
+		defer: true,
+		fn: async function (deferred) {
+			await extrnl.find({ filter: { _id: id } });
+			deferred.resolve();
+		},
+	})
+	.add("extrnl | delete | ", {
+		defer: true,
+		fn: async function (deferred) {
+			await extrnl.delete({ filter: { _id: id } });
 			deferred.resolve();
 		},
 	})
