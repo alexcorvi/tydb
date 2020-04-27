@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="src/logo.ts.png" width="300">
+	<img src="src/logo.ts.png" width="100">
 	<br>
 	<br>
 </p>
