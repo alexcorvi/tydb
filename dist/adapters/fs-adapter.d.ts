@@ -45,4 +45,5 @@ export declare class FS_Persistence_Adapter extends Persistence {
     rewriteData(event: PersistenceEvent): Promise<void>;
     appendIndex(data: string): Promise<void>;
     appendData(data: string): Promise<void>;
+    forcefulUnlock(): Promise<void>;
 }

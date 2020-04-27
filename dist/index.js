@@ -5,6 +5,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var Q = _interopDefault(require('p-queue'));
+var fetch = _interopDefault(require('cross-fetch'));
 var idb = require('idb-keyval');
 var fs = require('fs');
 var lockfile = require('lockfile');
@@ -3045,6 +3046,9 @@ class Persistence {
             this._memoryData.push(data);
         });
     }
+    forcefulUnlock() {
+        return __awaiter(this, void 0, void 0, function* () { });
+    }
 }
 
 class BaseModel {
@@ -3128,7 +3132,7 @@ class Datastore {
                 throw err;
             }
             if (this.indexes[options.fieldName]) {
-                return;
+                return { affectedIndex: options.fieldName };
             }
             this.indexes[options.fieldName] = new Index(options);
             // TTL
@@ -3144,9 +3148,12 @@ class Datastore {
                 throw e;
             }
             // We may want to force all options to be persisted including defaults, not just the ones passed the index creation function
-            return yield this.persistence.persistByAppendNewIndex([
+            yield this.persistence.persistByAppendNewIndex([
                 { $$indexCreated: options },
             ]);
+            return {
+                affectedIndex: options.fieldName,
+            };
         });
     }
     /**
@@ -3155,9 +3162,12 @@ class Datastore {
     removeIndex(fieldName) {
         return __awaiter(this, void 0, void 0, function* () {
             delete this.indexes[fieldName];
-            return yield this.persistence.persistByAppendNewIndex([
+            yield this.persistence.persistByAppendNewIndex([
                 { $$indexRemoved: fieldName },
             ]);
+            return {
+                affectedIndex: fieldName,
+            };
         });
     }
     /**
@@ -3230,7 +3240,6 @@ class Datastore {
     _leastCandidates(query) {
         const currentIndexKeys = Object.keys(this.indexes);
         const queryKeys = Object.keys(query);
-        // STEP 1: get candidates list by checking indexes from most to least frequent use case
         let usableQueryKeys = [];
         // possibility: basic match
         queryKeys.forEach((k) => {
@@ -3253,7 +3262,7 @@ class Datastore {
             }
         });
         if (usableQueryKeys.length > 0) {
-            return this.indexes[usableQueryKeys[0]].getMatching(query[usableQueryKeys[0]]);
+            return this.indexes[usableQueryKeys[0]].getMatching(query[usableQueryKeys[0]].$eq);
         }
         // possibility: using $in
         queryKeys.forEach((k) => {
@@ -3569,6 +3578,7 @@ class Datastore {
 
 class Database {
     constructor(options) {
+        this.reloadBeforeOperations = false;
         /**
          * Put one document
          */
@@ -3577,12 +3587,20 @@ class Database {
          * Find documents that meets a specified criteria
          */
         this.find = this.read;
-        const model = options.model ||
-            BaseModel;
+        this.model =
+            options.model ||
+                BaseModel;
+        if (options.ref.startsWith("dina://")) {
+            // using an external instance
+            this.ref = options.ref.substr(7);
+            this.loaded = new Promise(() => true);
+            return;
+        }
         this.ref = options.ref;
+        this.reloadBeforeOperations = !!options.reloadBeforeOperations;
         this._datastore = new Datastore({
             ref: this.ref,
-            model: model,
+            model: this.model,
             afterSerialization: options.afterSerialization,
             beforeDeserialization: options.beforeDeserialization,
             corruptAlertThreshold: options.corruptAlertThreshold,
@@ -3594,23 +3612,43 @@ class Database {
             this._datastore.persistence.setAutocompactionInterval(options.autoCompaction);
         }
     }
+    reloadFirst() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.reloadBeforeOperations)
+                return;
+            yield this.reload();
+        });
+    }
     /**
-     * Put one document
+     * insert documents
      */
     insert(docs) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this._datastore) {
+                return this._externalCall("insert", docs);
+            }
+            yield this.reloadFirst();
             const res = yield this._datastore.insert(docs);
             return res;
         });
     }
     /**
-     * Find documents that meets a specified criteria
+     * Find document(s) that meets a specified criteria
      */
     read({ filter, skip, limit, project, sort = undefined, }) {
         return __awaiter(this, void 0, void 0, function* () {
             filter = fixDeep(filter || {});
             sort = fixDeep(sort || {});
             project = fixDeep(project || {});
+            if (!this._datastore) {
+                return this._externalCall("read", {
+                    filter,
+                    skip,
+                    limit,
+                    project,
+                    sort,
+                });
+            }
             const cursor = this._datastore.cursor(filter);
             if (sort) {
                 cursor.sort(sort);
@@ -3624,11 +3662,12 @@ class Database {
             if (project) {
                 cursor.projection(project);
             }
+            yield this.reloadFirst();
             return yield cursor.exec();
         });
     }
     /**
-     * Update many documents that meets the specified criteria
+     * Update document(s) that meets the specified criteria
      */
     update({ filter, update, multi, }) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -3639,6 +3678,10 @@ class Database {
             if (update.$unset) {
                 update.$unset = fixDeep(update.$unset);
             }
+            if (!this._datastore) {
+                return this._externalCall("update", { filter, update, multi });
+            }
+            yield this.reloadFirst();
             const res = yield this._datastore.update(filter, update, {
                 multi,
                 upsert: false,
@@ -3647,8 +3690,8 @@ class Database {
         });
     }
     /**
-     * Update documents that meets the specified criteria,
-     * and insert the update query if no documents are matched
+     * Update document(s) that meets the specified criteria,
+     * and do an insertion if no documents are matched
      */
     upsert({ filter, update, multi, }) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -3659,6 +3702,10 @@ class Database {
             if (update.$unset) {
                 update.$unset = fixDeep(update.$unset);
             }
+            if (!this._datastore) {
+                return this._externalCall("upsert", { filter, update, multi });
+            }
+            yield this.reloadFirst();
             const res = yield this._datastore.update(filter, update, {
                 multi,
                 upsert: true,
@@ -3672,37 +3719,134 @@ class Database {
     count(filter = {}) {
         return __awaiter(this, void 0, void 0, function* () {
             filter = fixDeep(filter || {});
+            if (!this._datastore) {
+                return this._externalCall("count", filter);
+            }
+            yield this.reloadFirst();
             return yield this._datastore.count(filter);
         });
     }
     /**
-     * Delete many documents that meets the specified criteria
+     * Delete document(s) that meets the specified criteria
      *
      */
     delete({ filter, multi, }) {
         return __awaiter(this, void 0, void 0, function* () {
             filter = fixDeep(filter || {});
+            if (!this._datastore) {
+                return this._externalCall("delete", { filter, multi });
+            }
+            yield this.reloadFirst();
             const res = yield this._datastore.remove(filter, {
                 multi: multi || false,
             });
             return res;
         });
     }
+    /**
+     * Create an index specified by options
+     */
+    createIndex(options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this._datastore) {
+                return this._externalCall("createIndex", options);
+            }
+            yield this.reloadFirst();
+            return yield this._datastore.ensureIndex(options);
+        });
+    }
+    /**
+     * Remove an index by passing the field name that it is related to
+     */
+    removeIndex(fieldName) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this._datastore) {
+                return this._externalCall("removeIndex", { fieldName });
+            }
+            yield this.reloadFirst();
+            return yield this._datastore.removeIndex(fieldName);
+        });
+    }
+    /**
+     * Reload database from the persistence layer (if it exists)
+     */
     reload() {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this._datastore) {
+                return this._externalCall("reload", {});
+            }
             yield this._datastore.persistence.loadDatabase();
+            return {};
         });
     }
+    /**
+     * Compact the database persistence layer
+     */
     compact() {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this._datastore) {
+                return this._externalCall("compact", {});
+            }
             yield this._datastore.persistence.compactDatafile();
+            return {};
         });
     }
-    stopAutoCompaction() {
-        this._datastore.persistence.stopAutocompaction();
+    /**
+     * forcefully unlocks the persistence layer
+     * use with caution, and only if you know what you're doing
+     */
+    forcefulUnlock() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this._datastore) {
+                return this._externalCall("forcefulUnlock", {});
+            }
+            yield this._datastore.persistence.forcefulUnlock();
+            return {};
+        });
     }
+    /**
+     * Stop auto compaction of the persistence layer
+     */
+    stopAutoCompaction() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this._datastore) {
+                return this._externalCall("stopAutoCompaction", {});
+            }
+            this._datastore.persistence.stopAutocompaction();
+            return {};
+        });
+    }
+    /**
+     * Set auto compaction defined by an an interval
+     */
     resetAutoCompaction(interval) {
-        this._datastore.persistence.setAutocompactionInterval(interval);
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this._datastore) {
+                return this._externalCall("resetAutoCompaction", { interval });
+            }
+            this._datastore.persistence.setAutocompactionInterval(interval);
+            return {};
+        });
+    }
+    _externalCall(operation, body) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield fetch(`${this.ref}/${operation}`, {
+                method: "POST",
+                mode: "cors",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+            });
+            let data = yield response.json();
+            if (Array.isArray(data) && data[0] && data[0]._id) {
+                data = data.map((x) => this.model.new(x));
+            }
+            if (Array.isArray(data.docs) && data.docs[0] && data.docs[0]._id) {
+                data.docs = data.docs.map((x) => this.model.new(x));
+            }
+            return data;
+        });
     }
 }
 function fixDeep(input) {
@@ -4068,6 +4212,12 @@ class FS_Persistence_Adapter extends Persistence {
     appendData(data) {
         return __awaiter(this, void 0, void 0, function* () {
             yield storage.appendFile(this.ref, `${data}\n`, "utf8");
+        });
+    }
+    forcefulUnlock() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield _storage.unlock(this.ref);
+            yield _storage.unlock(this.ref + this.indexesFilenameExtension);
         });
     }
 }

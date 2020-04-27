@@ -71,5 +71,6 @@ export declare class Persistence<G extends Partial<BaseModel> = any> {
     rewriteData(event: PersistenceEvent): Promise<void>;
     appendIndex(data: string): Promise<void>;
     appendData(data: string): Promise<void>;
+    forcefulUnlock(): Promise<void>;
 }
 export {};

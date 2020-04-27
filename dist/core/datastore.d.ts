@@ -3,7 +3,7 @@ import { Index } from "./indexes";
 import { Persistence } from "./persistence";
 import * as types from "../types";
 import Q from "p-queue";
-interface EnsureIndexOptions {
+export interface EnsureIndexOptions {
     fieldName: string;
     unique?: boolean;
     sparse?: boolean;
@@ -58,11 +58,15 @@ export declare class Datastore<G extends Partial<types.BaseModel> & {
      * For now this function is synchronous, we need to test how much time it takes
      * We use an async API for consistency with the rest of the code
      */
-    ensureIndex(options: EnsureIndexOptions): Promise<void>;
+    ensureIndex(options: EnsureIndexOptions): Promise<{
+        affectedIndex: string;
+    }>;
     /**
      * Remove an index
      */
-    removeIndex(fieldName: string): Promise<void>;
+    removeIndex(fieldName: string): Promise<{
+        affectedIndex: string;
+    }>;
     /**
      * Add one or several document(s) to all indexes
      */

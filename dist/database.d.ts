@@ -1,4 +1,4 @@
-import { Persistence } from "./core";
+import { EnsureIndexOptions, Persistence } from "./core";
 import { NFP, BaseModel, Filter, SchemaKeyProjection, SchemaKeySort, UpdateOperators, UpsertOperators } from "./types";
 export interface DatabaseConfigurations<S extends BaseModel<S>> {
     ref: string;
@@ -11,21 +11,27 @@ export interface DatabaseConfigurations<S extends BaseModel<S>> {
     timestampData?: boolean;
     persistence_adapter?: typeof Persistence;
     autoCompaction?: number;
+    reloadBeforeOperations?: boolean;
 }
 export declare class Database<S extends BaseModel<S>> {
     private ref;
     private _datastore;
+    private reloadBeforeOperations;
+    model: (new () => S) & {
+        new: (json: S) => S;
+    };
     loaded: Promise<boolean>;
     constructor(options: DatabaseConfigurations<S>);
+    private reloadFirst;
     /**
-     * Put one document
+     * insert documents
      */
     insert(docs: S[]): Promise<{
         docs: S[];
         number: number;
     }>;
     /**
-     * Find documents that meets a specified criteria
+     * Find document(s) that meets a specified criteria
      */
     read({ filter, skip, limit, project, sort, }: {
         filter?: Filter<NFP<S>>;
@@ -35,7 +41,7 @@ export declare class Database<S extends BaseModel<S>> {
         project?: SchemaKeyProjection<NFP<S>>;
     }): Promise<S[]>;
     /**
-     * Update many documents that meets the specified criteria
+     * Update document(s) that meets the specified criteria
      */
     update({ filter, update, multi, }: {
         filter: Filter<NFP<S>>;
@@ -46,8 +52,8 @@ export declare class Database<S extends BaseModel<S>> {
         number: number;
     }>;
     /**
-     * Update documents that meets the specified criteria,
-     * and insert the update query if no documents are matched
+     * Update document(s) that meets the specified criteria,
+     * and do an insertion if no documents are matched
      */
     upsert({ filter, update, multi, }: {
         filter: Filter<NFP<S>>;
@@ -63,7 +69,7 @@ export declare class Database<S extends BaseModel<S>> {
      */
     count(filter?: Filter<NFP<S>>): Promise<number>;
     /**
-     * Delete many documents that meets the specified criteria
+     * Delete document(s) that meets the specified criteria
      *
      */
     delete({ filter, multi, }: {
@@ -73,10 +79,39 @@ export declare class Database<S extends BaseModel<S>> {
         docs: S[];
         number: number;
     }>;
-    reload(): Promise<void>;
-    compact(): Promise<void>;
-    stopAutoCompaction(): void;
-    resetAutoCompaction(interval: number): void;
+    /**
+     * Create an index specified by options
+     */
+    createIndex(options: EnsureIndexOptions): Promise<{
+        affectedIndex: string;
+    }>;
+    /**
+     * Remove an index by passing the field name that it is related to
+     */
+    removeIndex(fieldName: string): Promise<{
+        affectedIndex: string;
+    }>;
+    /**
+     * Reload database from the persistence layer (if it exists)
+     */
+    reload(): Promise<{}>;
+    /**
+     * Compact the database persistence layer
+     */
+    compact(): Promise<{}>;
+    /**
+     * forcefully unlocks the persistence layer
+     * use with caution, and only if you know what you're doing
+     */
+    forcefulUnlock(): Promise<{}>;
+    /**
+     * Stop auto compaction of the persistence layer
+     */
+    stopAutoCompaction(): Promise<{}>;
+    /**
+     * Set auto compaction defined by an an interval
+     */
+    resetAutoCompaction(interval: number): Promise<{}>;
     /**
      * Put one document
      */
@@ -102,4 +137,5 @@ export declare class Database<S extends BaseModel<S>> {
             };
         }> | undefined;
     }) => Promise<S[]>;
+    private _externalCall;
 }
