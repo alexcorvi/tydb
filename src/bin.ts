@@ -1,7 +1,7 @@
 import { FS_Persistence_Adapter } from "./adapters/fs-adapter";
 import { Database, DatabaseConfigurations } from "./database";
-import * as fastify from "fastify";
-import * as cors from "fastify-cors";
+import fastify from "fastify";
+import cors from "fastify-cors";
 import * as fs from "fs";
 import ow from "ow";
 import * as path from "path";
@@ -328,7 +328,7 @@ server.post("/resetAutoCompaction", async (request, reply) => {
 
 server.get("/", async (request, reply) => {
 	reply.type("application/json").code(200);
-	return { dinadb: "welcome", status: "ok", version: "0.5.3" };
+	return { tydb: "welcome", status: "ok", version: "0.5.3" };
 });
 
 server.listen(configs.fastify.listen, (err, address) => {

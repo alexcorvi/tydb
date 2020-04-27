@@ -1,9 +1,12 @@
 {
-	"name": "ffdb",
+	"name": "tydb",
 	"version": "0.1.2",
 	"description": "An Abstraction layer for mongodb for ease of use with TypeScript",
 	"main": "./dist/index.js",
 	"browser": "./dist/index.browser.js",
+	"bin": {
+		"tydb": "./dist/bin.js"
+	},
 	"directories": {
 		"test": "test"
 	},
