@@ -1,4 +1,5 @@
 import { Datastore, EnsureIndexOptions, Persistence } from "./core";
+import fetch from "cross-fetch";
 import {
 	NFP,
 	BaseModel,
@@ -25,21 +26,31 @@ export interface DatabaseConfigurations<S extends BaseModel<S>> {
 
 export class Database<S extends BaseModel<S>> {
 	private ref: string;
-	private _datastore: Datastore<S>;
-	private reloadBeforeOperations: boolean;
+	private _datastore: Datastore<S> | undefined;
+	private reloadBeforeOperations: boolean = false;
+	model: (new () => S) & {
+		new: (json: S) => S;
+	};
 	public loaded: Promise<boolean>;
 
 	constructor(options: DatabaseConfigurations<S>) {
-		const model =
+		this.model =
 			options.model ||
 			(BaseModel as (new () => S) & {
 				new: (json: S) => S;
 			});
+		if (options.ref.startsWith("dina://")) {
+			// using an external instance
+			this.ref = options.ref.substr(7);
+			this.loaded = new Promise(() => true);
+			return;
+		}
+
 		this.ref = options.ref;
 		this.reloadBeforeOperations = !!options.reloadBeforeOperations;
 		this._datastore = new Datastore({
 			ref: this.ref,
-			model: model,
+			model: this.model,
 			afterSerialization: options.afterSerialization,
 			beforeDeserialization: options.beforeDeserialization,
 			corruptAlertThreshold: options.corruptAlertThreshold,
@@ -62,6 +73,9 @@ export class Database<S extends BaseModel<S>> {
 	 * insert documents
 	 */
 	public async insert(docs: S[]): Promise<{ docs: S[]; number: number }> {
+		if (!this._datastore) {
+			return this._externalCall("insert", docs);
+		}
 		await this.reloadFirst();
 		const res = await this._datastore.insert(docs as any);
 		return res;
@@ -86,6 +100,17 @@ export class Database<S extends BaseModel<S>> {
 		filter = fixDeep(filter || {});
 		sort = fixDeep(sort || {});
 		project = fixDeep(project || {});
+
+		if (!this._datastore) {
+			return this._externalCall("read", {
+				filter,
+				skip,
+				limit,
+				project,
+				sort,
+			});
+		}
+
 		const cursor = this._datastore.cursor(filter);
 		if (sort) {
 			cursor.sort(sort as any);
@@ -122,6 +147,9 @@ export class Database<S extends BaseModel<S>> {
 		if (update.$unset) {
 			update.$unset = fixDeep(update.$unset);
 		}
+		if (!this._datastore) {
+			return this._externalCall("update", { filter, update, multi });
+		}
 		await this.reloadFirst();
 		const res = await this._datastore.update(filter, update, {
 			multi,
@@ -150,6 +178,9 @@ export class Database<S extends BaseModel<S>> {
 		if (update.$unset) {
 			update.$unset = fixDeep(update.$unset);
 		}
+		if (!this._datastore) {
+			return this._externalCall("upsert", { filter, update, multi });
+		}
 		await this.reloadFirst();
 		const res = await this._datastore.update(filter, update, {
 			multi,
@@ -163,6 +194,9 @@ export class Database<S extends BaseModel<S>> {
 	 */
 	public async count(filter: Filter<NFP<S>> = {}): Promise<number> {
 		filter = fixDeep(filter || {});
+		if (!this._datastore) {
+			return this._externalCall("count", filter);
+		}
 		await this.reloadFirst();
 		return await this._datastore.count(filter);
 	}
@@ -179,6 +213,9 @@ export class Database<S extends BaseModel<S>> {
 		multi?: boolean;
 	}): Promise<{ docs: S[]; number: number }> {
 		filter = fixDeep(filter || {});
+		if (!this._datastore) {
+			return this._externalCall("delete", { filter, multi });
+		}
 		await this.reloadFirst();
 		const res = await this._datastore.remove(filter, {
 			multi: multi || false,
@@ -189,53 +226,83 @@ export class Database<S extends BaseModel<S>> {
 	/**
 	 * Create an index specified by options
 	 */
-	public async createIndex(options: EnsureIndexOptions) {
+	public async createIndex(
+		options: EnsureIndexOptions
+	): Promise<{ affectedIndex: string }> {
+		if (!this._datastore) {
+			return this._externalCall("createIndex", options);
+		}
 		await this.reloadFirst();
-		await this._datastore.ensureIndex(options);
+		return await this._datastore.ensureIndex(options);
 	}
 
 	/**
 	 * Remove an index by passing the field name that it is related to
 	 */
-	public async removeIndex(fieldName: string) {
+	public async removeIndex(
+		fieldName: string
+	): Promise<{ affectedIndex: string }> {
+		if (!this._datastore) {
+			return this._externalCall("removeIndex", { fieldName });
+		}
 		await this.reloadFirst();
-		await this._datastore.removeIndex(fieldName);
+		return await this._datastore.removeIndex(fieldName);
 	}
 
 	/**
 	 * Reload database from the persistence layer (if it exists)
 	 */
-	async reload() {
+	async reload(): Promise<{}> {
+		if (!this._datastore) {
+			return this._externalCall("reload", {});
+		}
 		await this._datastore.persistence.loadDatabase();
+		return {};
 	}
 
 	/**
 	 * Compact the database persistence layer
 	 */
-	async compact() {
+	async compact(): Promise<{}> {
+		if (!this._datastore) {
+			return this._externalCall("compact", {});
+		}
 		await this._datastore.persistence.compactDatafile();
+		return {};
 	}
 
 	/**
 	 * forcefully unlocks the persistence layer
 	 * use with caution, and only if you know what you're doing
 	 */
-	async forcefulUnlock() {
+	async forcefulUnlock(): Promise<{}> {
+		if (!this._datastore) {
+			return this._externalCall("forcefulUnlock", {});
+		}
 		await this._datastore.persistence.forcefulUnlock();
+		return {};
 	}
 
 	/**
 	 * Stop auto compaction of the persistence layer
 	 */
-	stopAutoCompaction() {
+	async stopAutoCompaction(): Promise<{}> {
+		if (!this._datastore) {
+			return this._externalCall("stopAutoCompaction", {});
+		}
 		this._datastore.persistence.stopAutocompaction();
+		return {};
 	}
 
 	/**
 	 * Set auto compaction defined by an an interval
 	 */
-	resetAutoCompaction(interval: number) {
+	async resetAutoCompaction(interval: number): Promise<{}> {
+		if (!this._datastore) {
+			return this._externalCall("resetAutoCompaction", { interval });
+		}
 		this._datastore.persistence.setAutocompactionInterval(interval);
+		return {};
 	}
 
 	/**
@@ -246,6 +313,25 @@ export class Database<S extends BaseModel<S>> {
 	 * Find documents that meets a specified criteria
 	 */
 	find = this.read;
+
+	private async _externalCall<T>(operation: string, body: any): Promise<T> {
+		const response = await fetch(`${this.ref}/${operation}`, {
+			method: "POST",
+			mode: "cors",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(body),
+		});
+		let data = await response.json();
+		if (Array.isArray(data) && data[0] && data[0]._id) {
+			data = data.map((x) => this.model.new(x));
+		}
+		if (Array.isArray(data.docs) && data.docs[0] && data.docs[0]._id) {
+			data.docs = data.docs.map((x: any) => this.model.new(x));
+		}
+		return data;
+	}
 }
 
 function fixDeep<T extends Filter<any>>(input: T): T {

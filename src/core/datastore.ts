@@ -104,7 +104,9 @@ export class Datastore<
 	 * For now this function is synchronous, we need to test how much time it takes
 	 * We use an async API for consistency with the rest of the code
 	 */
-	async ensureIndex(options: EnsureIndexOptions) {
+	async ensureIndex(
+		options: EnsureIndexOptions
+	): Promise<{ affectedIndex: string }> {
 		options = options || {};
 
 		if (!options.fieldName) {
@@ -115,7 +117,7 @@ export class Datastore<
 			throw err;
 		}
 		if (this.indexes[options.fieldName]) {
-			return;
+			return { affectedIndex: options.fieldName };
 		}
 
 		this.indexes[options.fieldName] = new Index(options);
@@ -134,19 +136,25 @@ export class Datastore<
 		}
 
 		// We may want to force all options to be persisted including defaults, not just the ones passed the index creation function
-		return await this.persistence.persistByAppendNewIndex([
+		await this.persistence.persistByAppendNewIndex([
 			{ $$indexCreated: options },
 		]);
+		return {
+			affectedIndex: options.fieldName,
+		};
 	}
 
 	/**
 	 * Remove an index
 	 */
-	async removeIndex(fieldName: string) {
+	async removeIndex(fieldName: string): Promise<{ affectedIndex: string }> {
 		delete this.indexes[fieldName];
-		return await this.persistence.persistByAppendNewIndex([
+		await this.persistence.persistByAppendNewIndex([
 			{ $$indexRemoved: fieldName },
 		]);
+		return {
+			affectedIndex: fieldName,
+		};
 	}
 
 	/**

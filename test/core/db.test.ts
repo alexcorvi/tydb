@@ -2947,7 +2947,6 @@ describe("Database", function () {
 												unique: false,
 												sparse: true,
 											}).then(function (err) {
-												assert.isUndefined(err);
 												Object.keys(
 													db.indexes
 												).length.should.equal(3);
