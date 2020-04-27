@@ -21,8 +21,14 @@
 		"mongodb",
 		"mongo",
 		"typescript",
-		"ts"
+		"ts",
+		"database"
 	],
+	"homepage": "https://alex-corvi.gitbook.io/tydb/",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/alexcorvi/tydb.git"
+	},
 	"author": "Alex Corvi",
 	"license": "MIT",
 	"dependencies": {
