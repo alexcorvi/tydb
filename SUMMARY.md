@@ -10,7 +10,5 @@
 * [Persistence Adapters](persistence.md)
 * [In the Browser](in-the-browser.md)
 * [Over the Network](over-the-netowrk.md)
-* [TyDB Shell](tydb-shell.md)
 * [Performance](performance.md)
-* [Contributing](contributing.md)
 
