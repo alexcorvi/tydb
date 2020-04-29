@@ -98,6 +98,13 @@ await db.insert([
 ]);
 ```
 
+#### Return type
+
+Method return a promise fulfilling with object that has the following properties:
+
+* `docs`: Is an array of the inserted documents.
+* `number`: Is the number of the inserted documents.
+
 ## `Database.find`
 
 | argument type | return type | aliases |
@@ -254,6 +261,10 @@ await db.find({
 For more about query operators and options read: [Query API documentation](query-api.md). And for more about the benifit of object mapping in the query API, read: [Object Mapping documentation](object-mapping.md).
 {% endhint %}
 
+#### Return type
+
+Method return a promise fulfilling with an array of the matched documents. If no documents matches then the array would be empty.
+
 ## `Database.update`
 
 | argument type | return type | aliases |
@@ -342,6 +353,13 @@ For more about query operators and options read: [Query API documentation](query
 **Do not** apply update operators to the **`readonly`** values that are the computed properties \(e.g. age property in the model above\).
 {% endhint %}
 
+#### Return type
+
+Method return a promise fulfilling with object that has the following properties:
+
+* `docs`: Is an array of the  update documents.
+* `number`: Is the number of the updated documents.
+
 ## `Database.upsert`
 
 | argument type | return type | aliases |
@@ -371,12 +389,6 @@ For more about query operators and options read: [Query API documentation](query
         <p> <code>number: number;</code>
         </p>
         <p> <code>upsert:boolean</code>
-        </p>
-        <p> <code>// ^ would be true if</code>
-        </p>
-        <p> <code>// new document was</code>
-        </p>
-        <p> <code>// inserted</code>
         </p>
         <p><code>}&gt;</code>
         </p>
@@ -438,6 +450,14 @@ For more about query operators and options read: [Query API documentation](query
 {% hint style="info" %}
 **Do not** apply update operators to the **`readonly`** values that are the computed properties \(e.g. age property in the model above\).
 {% endhint %}
+
+#### Return type
+
+Method return a promise fulfilling with object that has the following properties:
+
+* `docs`: Is an array of the inserted/updated documents.
+* `number`: Is the number of the inserted/updated documents.
+* `upsert:` is a boolean that should be `true` when an insertion actually occurred, and should be `false` if an update occurred.
 
 ## `Database.count`
 
@@ -505,6 +525,10 @@ await db.count({
     name: "alex",
 });
 ```
+
+#### Return type
+
+Method return a promise fulfilling with a number, that is the number of the documents matching the given query.
 
 ## `Database.delete`
 
@@ -586,6 +610,13 @@ await db.delete({
 });
 ```
 
+#### Return type
+
+Method return a promise fulfilling with object that has the following properties:
+
+* `docs`: Is an array of the deleted documents.
+* `number`: Is the number of the deleted documents.
+
 ## `Database.createIndex`
 
 | argument type | return type | aliases |
@@ -651,6 +682,12 @@ await db.createIndex({
 });
 ```
 
+#### Return type
+
+Method return a promise fulfilling with object that has the following properties:
+
+* `affectedIndex`: Is a string of the field name that the index created upon.
+
 ## `Database.removeIndex`
 
 | argument type | return type | aliases |
@@ -693,7 +730,14 @@ const db = new Database<Model>({
 });
 
 await db.removeIndex("name");
+
 ```
+
+#### Return type
+
+Method return a promise fulfilling with object that has the following properties:
+
+* `affectedIndex`: Is a string of the field name that the index created upon.
 
 ## `Database.reload`
 
