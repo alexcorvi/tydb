@@ -8,24 +8,24 @@ description: >-
 
 ```typescript
 class Model extends BaseModel {
-	name: string = "";
-	yearBorn: number = 0;
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "";
+    yearBorn: number = 0;
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	ref: "a-database-name",
-	model: Model,
+    ref: "a-database-name",
+    model: Model,
 });
 
 await db.insert([Model.new({ yearBorn: 11 })]);
 await db.find({ filter: { yearBorn: 11 } });
 await db.update({ filter: { yearBorn: 11 }, update: { $set: { yearBorn: 11 } } });
 await db.upsert({
-	filter: { yearBorn: 11 },
-	update: { $set: { yearBorn: 5 }, $setOnInsert: Model.new({ yearBorn: 5 }) },
+    filter: { yearBorn: 11 },
+    update: { $set: { yearBorn: 5 }, $setOnInsert: Model.new({ yearBorn: 5 }) },
 });
 await db.count({ yearBorn: 11 });
 await db.delete({ filter: { yearBorn: 11 }, multi: true });
@@ -40,109 +40,101 @@ await db.resetAutoCompaction(9000);
 
 ## `Database.insert`
 
+| argument type | return type | aliases |
+| :--- | :--- | :--- |
+
+
 <table>
   <thead>
     <tr>
-      <th style="text-align:left">argument type</th>
-      <th style="text-align:left">return type</th>
-      <th style="text-align:left">aliases</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align:left"><code>Array&lt;Model&gt;</code>
-      </td>
-      <td style="text-align:left">
+      <th style="text-align:left"><code>Array&lt;Model&gt;</code>
+      </th>
+      <th style="text-align:left">
         <p><code>Promise&lt;{</code>
         </p>
-        <p><code>  docs: Array&lt;Model&gt;;</code>
+        <p> <code>docs: Array&lt;Model&gt;;</code>
         </p>
-        <p><code>  number: number;</code>
+        <p> <code>number: number;</code>
         </p>
         <p><code>}&gt;</code>
         </p>
-      </td>
-      <td style="text-align:left"><code>Database.create</code>
-      </td>
+      </th>
+      <th style="text-align:left"><code>Database.create</code>
+      </th>
     </tr>
-  </tbody>
-</table>For inserting new documents into the database. This method only accepts an array of documents Model so you should use it with `Model.new({})`.
-
-```typescript
+  </thead>
+  <tbody></tbody>
+</table>```typescript
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "alex"; // default is "alex"
-	yearBorn: number = 1992; // default is 
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "alex"; // default is "alex"
+    yearBorn: number = 1992; // default is 
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 await db.insert([
-	Model.new({
-		yearBorn: 1990
-		/* default name will be used */
-	}),
-	Model.new({
-		name: "john"
-		/* default yearBorn will be used */
-	}),
-	Model.new({
-		name: "john"
-		yearnBorn: 1980,
-		_id: "some-unique-id",
-	}),
+    Model.new({
+        yearBorn: 1990
+        /* default name will be used */
+    }),
+    Model.new({
+        name: "john"
+        /* default yearBorn will be used */
+    }),
+    Model.new({
+        name: "john"
+        yearnBorn: 1980,
+        _id: "some-unique-id",
+    }),
 ]);
 ```
 
 ## `Database.find`
 
+| argument type | return type | aliases |
+| :--- | :--- | :--- |
+
+
 <table>
   <thead>
     <tr>
-      <th style="text-align:left">argument type</th>
-      <th style="text-align:left">return type</th>
-      <th style="text-align:left">aliases</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align:left">
+      <th style="text-align:left">
         <p><code>{</code>
         </p>
-        <p><code>  filter?: Query&lt;Model&gt;;</code>
+        <p> <code>filter?: Query&lt;Model&gt;;</code>
         </p>
-        <p><code>  skip?: number;</code>
+        <p> <code>skip?: number;</code>
         </p>
-        <p><code>  limit?: number;</code>
+        <p> <code>limit?: number;</code>
         </p>
-        <p><code>  sort?: Sort&lt;Model&gt;;</code>
+        <p> <code>sort?: Sort&lt;Model&gt;;</code>
         </p>
         <p><code>}</code>
         </p>
-      </td>
-      <td style="text-align:left">
+      </th>
+      <th style="text-align:left">
         <p><code>Promise&lt;</code>
         </p>
-        <p><code>  Array&lt;Model&gt;</code>
+        <p> <code>Array&lt;Model&gt;</code>
         </p>
         <p><code>&gt;</code>
         </p>
-      </td>
-      <td style="text-align:left"><code>Database.read</code>
-      </td>
+      </th>
+      <th style="text-align:left"><code>Database.read</code>
+      </th>
     </tr>
-  </tbody>
-</table>For finding a document\(s\) in the database. This method takes the following interface as an argument:
-
-```typescript
+  </thead>
+  <tbody></tbody>
+</table>```typescript
 interface FindArgument<Model> {
     filter?: Query<Model>; // optional
     skip?: number; // optional
@@ -151,7 +143,7 @@ interface FindArgument<Model> {
 }
 ```
 
-Where: 
+Where:
 
 * `filter` is a query similar to the query language of MongoDB, it can accepts direct equality evaluation like `{age: 11}` or a field level operator: `{age: { $gt: 11 }}` or a top level operator: `$or: [{ age: 11 }, { age: 12 }]`.
 
@@ -166,17 +158,17 @@ Operators are those parameter that starts with the dollar sign `$` \(e.g. `$gt`,
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "";
-	yearBorn: number = 0;
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "";
+    yearBorn: number = 0;
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 /**
@@ -184,31 +176,31 @@ const db = new Database<Model>({
  * as 1992 and named "alex"
  */
 await db.find({
-	filter: {
-		// direct filtering
-		yearBorn: 11,
-		name: "alex",
-	},
+    filter: {
+        // direct filtering
+        yearBorn: 11,
+        name: "alex",
+    },
 });
 /**
  * Will find all documents that has year born
  * less than 1990 (1989, 1988 ... etc)
  */
 await db.find({
-	filter: {
-		// field level operator
-		yearBorn: { $lt: 1990 },
-	},
+    filter: {
+        // field level operator
+        yearBorn: { $lt: 1990 },
+    },
 });
 /**
  * Will find all documents that has year born
  * either 1991 or 1981
  */
 await db.find({
-	filter: {
-		// top level operator
-		$or: [{ yearBorn: 1991 }, { yearBorn: 1981 }],
-	},
+    filter: {
+        // top level operator
+        $or: [{ yearBorn: 1991 }, { yearBorn: 1981 }],
+    },
 });
 /**
  * Will find all documents that has year born
@@ -216,12 +208,12 @@ await db.find({
  * and named alex
  */
 await db.find({
-	filter: {
-		// top level operator
-		// with field level operator
-		$nor: [{ yearBorn: { $lt: 1980 } }, { yearBorn: { $gt: 1990 } }],
-		name: "alex",
-	},
+    filter: {
+        // top level operator
+        // with field level operator
+        $nor: [{ yearBorn: { $lt: 1980 } }, { yearBorn: { $gt: 1990 } }],
+        name: "alex",
+    },
 });
 ```
 
@@ -231,17 +223,17 @@ You can also use the computed value when filtering \(the beauty of object mappin
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "";
-	yearBorn: number = 0;
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "";
+    yearBorn: number = 0;
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 /**
@@ -250,11 +242,11 @@ const db = new Database<Model>({
  * and named "alex"
  */
 await db.find({
-	filter: {
-		// direct filtering
-		age: 12,
-		name: "alex",
-	},
+    filter: {
+        // direct filtering
+        age: 12,
+        name: "alex",
+    },
 });
 ```
 
@@ -264,45 +256,41 @@ For more about query operators and options read: [Query API documentation](query
 
 ## `Database.update`
 
+| argument type | return type | aliases |
+| :--- | :--- | :--- |
+
+
 <table>
   <thead>
     <tr>
-      <th style="text-align:left">argument type</th>
-      <th style="text-align:left">return type</th>
-      <th style="text-align:left">aliases</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align:left">
+      <th style="text-align:left">
         <p><code>{</code>
         </p>
-        <p><code>  filter: Query&lt;Model&gt;;</code>
+        <p> <code>filter: Query&lt;Model&gt;;</code>
         </p>
-        <p><code>  update: Update&lt;Model&gt;;</code>
+        <p> <code>update: Update&lt;Model&gt;;</code>
         </p>
-        <p><code>  multi: boolean;</code>
+        <p> <code>multi: boolean;</code>
         </p>
         <p><code>}</code>
         </p>
-      </td>
-      <td style="text-align:left">
+      </th>
+      <th style="text-align:left">
         <p><code>Promise&lt;{</code>
         </p>
-        <p><code>  docs: Array&lt;Model&gt;;</code>
+        <p> <code>docs: Array&lt;Model&gt;;</code>
         </p>
-        <p><code>  number: number;</code>
+        <p> <code>number: number;</code>
         </p>
         <p><code>}&gt;</code>
         </p>
-      </td>
-      <td style="text-align:left"><em>non</em>
-      </td>
+      </th>
+      <th style="text-align:left"><em>non</em>
+      </th>
     </tr>
-  </tbody>
-</table>For updating document\(s\) into the database. This method takes the following interface as an argument:
-
-```typescript
+  </thead>
+  <tbody></tbody>
+</table>```typescript
 interface FindArgument<Model> {
     filter: Query<Model>;
     update: Update<Model>;
@@ -310,7 +298,7 @@ interface FindArgument<Model> {
 }
 ```
 
-Where: 
+Where:
 
 * `filter` is a query similar to the query language of MongoDB, it can accepts direct equality evaluation like `{age: 11}` or a field level operator: `{age: { $gt: 11 }}` or a top level operator: `$or: [{ age: 11 }, { age: 12 }]`.
 
@@ -325,24 +313,24 @@ Operators are those parameter that starts with the dollar sign `$` \(e.g. `$gt`,
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "";
-	yearBorn: number = 0;
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "";
+    yearBorn: number = 0;
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 await db.update({
-	filter: { age: 11 },
-	// increment yearBorn by 15
-	// and set name to "john"
-	update: { $inc: { yearBorn: 15 }, $set: { name: "john" } },
+    filter: { age: 11 },
+    // increment yearBorn by 15
+    // and set name to "john"
+    update: { $inc: { yearBorn: 15 }, $set: { name: "john" } },
 });
 ```
 
@@ -356,53 +344,49 @@ For more about query operators and options read: [Query API documentation](query
 
 ## `Database.upsert`
 
+| argument type | return type | aliases |
+| :--- | :--- | :--- |
+
+
 <table>
   <thead>
     <tr>
-      <th style="text-align:left">argument type</th>
-      <th style="text-align:left">return type</th>
-      <th style="text-align:left">aliases</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align:left">
+      <th style="text-align:left">
         <p><code>{</code>
         </p>
-        <p><code>  filter: Query&lt;Model&gt;;</code>
+        <p> <code>filter: Query&lt;Model&gt;;</code>
         </p>
-        <p><code>  update: Upsert&lt;Model&gt;;</code>
+        <p> <code>update: Upsert&lt;Model&gt;;</code>
         </p>
-        <p><code>  multi: boolean;</code>
+        <p> <code>multi: boolean;</code>
         </p>
         <p><code>}</code>
         </p>
-      </td>
-      <td style="text-align:left">
+      </th>
+      <th style="text-align:left">
         <p><code>Promise&lt;{</code>
         </p>
-        <p><code>  docs: Array&lt;Model&gt;;</code>
+        <p> <code>docs: Array&lt;Model&gt;;</code>
         </p>
-        <p><code>  number: number;</code>
+        <p> <code>number: number;</code>
         </p>
-        <p><code>  upsert:boolean</code>
+        <p> <code>upsert:boolean</code>
         </p>
-        <p><code>  // ^ would be true if</code>
+        <p> <code>// ^ would be true if</code>
         </p>
-        <p><code>  // new document was</code>
+        <p> <code>// new document was</code>
         </p>
-        <p><code>  // inserted</code>
+        <p> <code>// inserted</code>
         </p>
         <p><code>}&gt;</code>
         </p>
-      </td>
-      <td style="text-align:left"><em>non</em>
-      </td>
+      </th>
+      <th style="text-align:left"><em>non</em>
+      </th>
     </tr>
-  </tbody>
-</table>This method will update the document\(s\) if any is found, and will insert a document if non is found. It takes the following interface as an argument:
-
-```typescript
+  </thead>
+  <tbody></tbody>
+</table>```typescript
 interface FindArgument<Model> {
     filter: Query<Model>;
     update: Upsert<Model>;
@@ -410,7 +394,7 @@ interface FindArgument<Model> {
 }
 ```
 
-Where: 
+Where:
 
 * `filter` is a query similar to the query language of MongoDB, it can accepts direct equality evaluation like `{age: 11}` or a field level operator: `{age: { $gt: 11 }}` or a top level operator: `$or: [{ age: 11 }, { age: 12 }]`.
 
@@ -425,25 +409,25 @@ Operators are those parameter that starts with the dollar sign `$` \(e.g. `$gt`,
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "";
-	yearBorn: number = 0;
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "";
+    yearBorn: number = 0;
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 await db.upsert({
-	filter: { name: "alex" },
-	update: {
-	  $set: { age: 5 },
-	  $setOnInsert: Model.new({ age: 5, name: "alex" })
-	},
+    filter: { name: "alex" },
+    update: {
+      $set: { age: 5 },
+      $setOnInsert: Model.new({ age: 5, name: "alex" })
+    },
 });
 ```
 
@@ -471,17 +455,17 @@ Operators are those parameter that starts with the dollar sign `$` \(e.g. `$gt`,
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "";
-	yearBorn: number = 0;
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "";
+    yearBorn: number = 0;
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 /**
@@ -489,25 +473,25 @@ const db = new Database<Model>({
  * as 1992 and named "alex"
  */
 await db.count({
-	// direct filtering
-	yearBorn: 11,
-	name: "alex",
+    // direct filtering
+    yearBorn: 11,
+    name: "alex",
 });
 /**
  * Will count all documents that has year born
  * less than 1990 (1989, 1988 ... etc)
  */
 await db.count({
-	// field level operator
-	yearBorn: { $lt: 1990 },
+    // field level operator
+    yearBorn: { $lt: 1990 },
 });
 /**
  * Will count all documents that has year born
  * either 1991 or 1981
  */
 await db.count({
-	// top level operator
-	$or: [{ yearBorn: 1991 }, { yearBorn: 1981 }],
+    // top level operator
+    $or: [{ yearBorn: 1991 }, { yearBorn: 1981 }],
 });
 /**
  * Will count all documents that has year born
@@ -515,52 +499,48 @@ await db.count({
  * and named alex
  */
 await db.count({
-	// top level operator
-	// with field level operator
-	$nor: [{ yearBorn: { $lt: 1980 } }, { yearBorn: { $gt: 1990 } }],
-	name: "alex",
+    // top level operator
+    // with field level operator
+    $nor: [{ yearBorn: { $lt: 1980 } }, { yearBorn: { $gt: 1990 } }],
+    name: "alex",
 });
 ```
 
 ## `Database.delete`
 
+| argument type | return type | aliases |
+| :--- | :--- | :--- |
+
+
 <table>
   <thead>
     <tr>
-      <th style="text-align:left">argument type</th>
-      <th style="text-align:left">return type</th>
-      <th style="text-align:left">aliases</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align:left">
+      <th style="text-align:left">
         <p><code>{</code>
         </p>
-        <p><code>  filter: Query&lt;Model&gt;;</code>
+        <p> <code>filter: Query&lt;Model&gt;;</code>
         </p>
-        <p><code>  multi: boolean;</code>
+        <p> <code>multi: boolean;</code>
         </p>
         <p><code>}</code>
         </p>
-      </td>
-      <td style="text-align:left">
+      </th>
+      <th style="text-align:left">
         <p><code>Promise&lt;{</code>
         </p>
-        <p><code>  docs: Array&lt;Model&gt;;</code>
+        <p> <code>docs: Array&lt;Model&gt;;</code>
         </p>
-        <p><code>  number: number;</code>
+        <p> <code>number: number;</code>
         </p>
         <p><code>}&gt;</code>
         </p>
-      </td>
-      <td style="text-align:left"><code>Database.remove</code>
-      </td>
+      </th>
+      <th style="text-align:left"><code>Database.remove</code>
+      </th>
     </tr>
-  </tbody>
-</table>For deleting documents from the database. This method takes the following interface as an argument:
-
-```typescript
+  </thead>
+  <tbody></tbody>
+</table>```typescript
 interface FindArgument<Model> {
     filter: Query<Model>;
     update: Upsert<Model>;
@@ -568,7 +548,7 @@ interface FindArgument<Model> {
 }
 ```
 
-Where: 
+Where:
 
 * `filter` is a query similar to the query language of MongoDB, it can accepts direct equality evaluation like `{age: 11}` or a field level operator: `{age: { $gt: 11 }}` or a top level operator: `$or: [{ age: 11 }, { age: 12 }]`.
 
@@ -582,17 +562,17 @@ Operators are those parameter that starts with the dollar sign `$` \(e.g. `$gt`,
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "";
-	yearBorn: number = 0;
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "";
+    yearBorn: number = 0;
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 
@@ -601,52 +581,48 @@ const db = new Database<Model>({
  * as the value of property "age"
 */
 await db.delete({
-	filter: { age: 11 },
-	multi: true
+    filter: { age: 11 },
+    multi: true
 });
 ```
 
 ## `Database.createIndex`
 
+| argument type | return type | aliases |
+| :--- | :--- | :--- |
+
+
 <table>
   <thead>
     <tr>
-      <th style="text-align:left">argument type</th>
-      <th style="text-align:left">return type</th>
-      <th style="text-align:left">aliases</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align:left">
+      <th style="text-align:left">
         <p><code>{</code>
         </p>
-        <p><code>  fieldName: string;</code>
+        <p> <code>fieldName: string;</code>
         </p>
-        <p><code>  unique?: boolean;</code>
+        <p> <code>unique?: boolean;</code>
         </p>
-        <p><code>  sparse?: boolean;</code>
+        <p> <code>sparse?: boolean;</code>
         </p>
-        <p><code>  expireAfterSeconds?: number;</code>
+        <p> <code>expireAfterSeconds?: number;</code>
         </p>
         <p><code>}</code>
         </p>
-      </td>
-      <td style="text-align:left">
+      </th>
+      <th style="text-align:left">
         <p><code>Promise&lt;{</code>
         </p>
-        <p><code>  affectedIndex: string</code>
+        <p> <code>affectedIndex: string</code>
         </p>
         <p><code>}&gt;</code>
         </p>
-      </td>
-      <td style="text-align:left"><code>Database.ensureIndex</code>
-      </td>
+      </th>
+      <th style="text-align:left"><code>Database.ensureIndex</code>
+      </th>
     </tr>
-  </tbody>
-</table>Indexing gives a very nice speed boost and can be used to enforce a unique constraint on a field. It has the following options:
-
-* **`fieldName`** \(required\): name of the field to index.
+  </thead>
+  <tbody></tbody>
+</table>* **`fieldName`** \(required\): name of the field to index.
 * **`unique`** \(optional, defaults to `false`\): enforce field uniqueness. Note that a unique index will raise an error if you try to index two documents for which the field is not defined.
 * **`sparse`** \(optional, defaults to `false`\): don't index documents for which the field is not defined. Use this option along with "unique" if you want to accept multiple documents for which it is not defined.
 * **`expireAfterSeconds`** \(number of seconds, optional\): if set, the created index is a TTL \(time to live\) index, that will automatically remove documents when the system date becomes larger than the date on the indexed field plus `expireAfterSeconds`. Documents where the indexed field is not specified or not a `Date` object are ignored.
@@ -655,17 +631,17 @@ await db.delete({
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "alex"; // default is "alex"
-	yearBorn: number = 1992; // default is 
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "alex"; // default is "alex"
+    yearBorn: number = 1992; // default is 
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 await db.createIndex({
@@ -677,47 +653,43 @@ await db.createIndex({
 
 ## `Database.removeIndex`
 
+| argument type | return type | aliases |
+| :--- | :--- | :--- |
+
+
 <table>
   <thead>
     <tr>
-      <th style="text-align:left">argument type</th>
-      <th style="text-align:left">return type</th>
-      <th style="text-align:left">aliases</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="text-align:left"><code>string</code>
-      </td>
-      <td style="text-align:left">
+      <th style="text-align:left"><code>string</code>
+      </th>
+      <th style="text-align:left">
         <p><code>Promise&lt;{</code>
         </p>
-        <p><code>  affectedIndex: string</code>
+        <p> <code>affectedIndex: string</code>
         </p>
         <p><code>}&gt;</code>
         </p>
-      </td>
-      <td style="text-align:left"><em>non</em>
-      </td>
+      </th>
+      <th style="text-align:left"><em>non</em>
+      </th>
     </tr>
-  </tbody>
-</table>Removes a previously created index.  takes a single argument, a string of the field name that the index was created upon.
-
-```typescript
+  </thead>
+  <tbody></tbody>
+</table>```typescript
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "alex"; // default is "alex"
-	yearBorn: number = 1992; // default is 
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "alex"; // default is "alex"
+    yearBorn: number = 1992; // default is 
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 await db.removeIndex("name");
@@ -735,23 +707,23 @@ Reloading the persistence layer \(e.g. the file\) of the database, so any change
 import { BaseModel, Database, FS_Persistence_Adapter } from "./src";
 
 class Model extends BaseModel {
-	name: string = "";
-	yearBorn: number = 0;
+    name: string = "";
+    yearBorn: number = 0;
 }
 
 // first instance
 const db1 = new Database<Model>({
-	ref: "a-database-name",
-	model: Model,
-	persistence_adapter: FS_Persistence_Adapter
+    ref: "a-database-name",
+    model: Model,
+    persistence_adapter: FS_Persistence_Adapter
 });
 
 // second instance on the same ref
 // using the same persistence adapter
 const db2 = new Database<Model>({
-	ref: "a-database-name",
-	model: Model,
-	persistence_adapter: FS_Persistence_Adapter
+    ref: "a-database-name",
+    model: Model,
+    persistence_adapter: FS_Persistence_Adapter
 });
 
 
@@ -802,24 +774,24 @@ Resetting \(or starting\) auto compaction at intervals of time.
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "alex"; // default is "alex"
-	yearBorn: number = 1992; // default is 
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "alex"; // default is "alex"
+    yearBorn: number = 1992; // default is 
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
 });
 
 await db.resetAutoCompaction(10000) // every 10 seconds
 setTimeout(async ()=>{
-	// after 20 seconds, auto compaction
-	// will occur every 30 seconds
-	await db.resetAutoCompaction(30000)
+    // after 20 seconds, auto compaction
+    // will occur every 30 seconds
+    await db.resetAutoCompaction(30000)
 },20000)
 ```
 
@@ -835,22 +807,20 @@ Stopping auto compaction.
 import { BaseModel, Database } from "./src";
 
 class Model extends BaseModel {
-	name: string = "alex"; // default is "alex"
-	yearBorn: number = 1992; // default is 
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
+    name: string = "alex"; // default is "alex"
+    yearBorn: number = 1992; // default is 
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
 }
 
 const db = new Database<Model>({
-	// database configuration parameters ...
-	ref: "a-database-name",
-	model: Model,
-	autoCompaction: 900
+    // database configuration parameters ...
+    ref: "a-database-name",
+    model: Model,
+    autoCompaction: 900
 });
 
 await db.stopAutoCompaction();
 ```
-
-
 

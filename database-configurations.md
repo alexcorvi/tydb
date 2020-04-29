@@ -55,57 +55,57 @@ In such case, the only database configurations that matters are the `ref` and th
 
 **`default:`** `no default, parameter is required`
 
-This is the part where strong typing and object mapping occurs. A model should be written to describe your document, the properties of this model are actually used as a type declaration for your document. Also, You ought to use this class for creating new documents. 
+This is the part where strong typing and object mapping occurs. A model should be written to describe your document, the properties of this model are actually used as a type declaration for your document. Also, You ought to use this class for creating new documents.
 
 ```typescript
 import { Database, BaseModel } from "tydb";
 
 class Employee extends BaseModel {
-	name: string = "alex"; // default name is "alex"
-	yearBorn: number = 1992; // default yearBorn is 1992
-	
-	// this computed propery
-	// will not be saved to the database
-	// however, you can use it in querying
-	// and you would get it when you get
-	// the document from the DB
-	get age() {
-		return new Date().getFullYear() - this.yearBorn;
-	}
-	
-	// this method will not be saved
-	// to the database, and you won't
-	// you would also get it when you
-	// get the document from the DB
-	toIDCard() {
-		let names = this.name.split(/\s/);
-		return {
-			firstName: names[0],
-			lastName: names[names.length - 1],
-			age: this.age,
-		};
-	}
+    name: string = "alex"; // default name is "alex"
+    yearBorn: number = 1992; // default yearBorn is 1992
+
+    // this computed propery
+    // will not be saved to the database
+    // however, you can use it in querying
+    // and you would get it when you get
+    // the document from the DB
+    get age() {
+        return new Date().getFullYear() - this.yearBorn;
+    }
+
+    // this method will not be saved
+    // to the database, and you won't
+    // you would also get it when you
+    // get the document from the DB
+    toIDCard() {
+        let names = this.name.split(/\s/);
+        return {
+            firstName: names[0],
+            lastName: names[names.length - 1],
+            age: this.age,
+        };
+    }
 }
 
 // the "new" method comes from the BaseModel
 // which is what your model extending
 // and is strongly typed
 const alex = Employee.new({
-	// you can omit any of the properties
-	// and the defaults you defined above
-	// will be used.
-	yearBorn: 1990,
-	name: "Alex Corvi",
-	// make sure not to set a computef property
-	// like "age" or a method like "toIDCard"
-	// since you will change the typing of your
-	// data at runtime and will lose type-strongness
+    // you can omit any of the properties
+    // and the defaults you defined above
+    // will be used.
+    yearBorn: 1990,
+    name: "Alex Corvi",
+    // make sure not to set a computef property
+    // like "age" or a method like "toIDCard"
+    // since you will change the typing of your
+    // data at runtime and will lose type-strongness
 });
 
 
 const db = new Database<Employee>({
-	ref: "employees.db",
-	model: Employee
+    ref: "employees.db",
+    model: Employee
 });
 
 db.insert([alex]);
@@ -126,8 +126,6 @@ This parameter:
 * Must be used along side `beforeDeserialization`.
 * Must be the reverse of `beforeDeserialization`.
 
-
-
 ## `beforeDeserialization`
 
 **`type:`** `(input:string)=>string`
@@ -139,8 +137,6 @@ This parameter:
 * Must be used along side `afterSerialization`.
 * Must be the reverse of `afterSerialization`.
 
-
-
 ```typescript
 /**
 * In this example we encode the
@@ -148,28 +144,26 @@ This parameter:
 */
 
 function toHex(plain: string) {
-	const hex = plain
-		.split("")
-		.map((c) => c.charCodeAt(0).toString(16))
-		.join("");
-	return hex;
+    const hex = plain
+        .split("")
+        .map((c) => c.charCodeAt(0).toString(16))
+        .join("");
+    return hex;
 }
 
 function fromHex(hex: string) {
-	let plain = "";
-	for (let i = 0; i < hex.length; i += 2) {
-		plain += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-	}
-	return plain;
+    let plain = "";
+    for (let i = 0; i < hex.length; i += 2) {
+        plain += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    }
+    return plain;
 }
 
 const db = new Database<Employee>({
-	ref: "employees.db",
-	afterSerialization: toHex,
-	beforeDeserialization: fromHex,
+    ref: "employees.db",
+    afterSerialization: toHex,
+    beforeDeserialization: fromHex,
 });
-
-
 ```
 
 ## `corruptAlertThreshold`
@@ -182,13 +176,12 @@ Although different measures has been taken to avoid data loss and corruption, it
 
 ```typescript
 const db = new Database<Employee>({
-	ref: "employees.db",
-	corruptAlertThreshold: 0.1,
-	// tolerate corruption only if it is
-	// less than or equal to 10% of the
-	// total data
+    ref: "employees.db",
+    corruptAlertThreshold: 0.1,
+    // tolerate corruption only if it is
+    // less than or equal to 10% of the
+    // total data
 });
-
 ```
 
 ## `timestampData`
@@ -265,7 +258,7 @@ const mydb = new Database({
 });
 ```
 
-However, the minimum compaction interval is 5 seconds \(5000 ms\). Setting it anything lower than 5 seconds will be ignored and will be reset to 5 seconds. Setting it to `0` will disable auto compaction. 
+However, the minimum compaction interval is 5 seconds \(5000 ms\). Setting it anything lower than 5 seconds will be ignored and will be reset to 5 seconds. Setting it to `0` will disable auto compaction.
 
 ## `reloadBeforeOperations`
 

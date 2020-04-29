@@ -6,7 +6,7 @@ description: >-
 
 # Query API
 
-The Query API is [very similar to MongoDB](https://docs.mongodb.com/manual/tutorial/query-documents/),  You can select documents based on field equality or use comparison operators \(`$lt`, `$lte`, `$gt`, `$gte`, `$in`, `$nin`, `$ne`, `$eq`\). You can also use logical operators `$or`, `$and`, `$not` and `$where`.
+The Query API is [very similar to MongoDB](https://docs.mongodb.com/manual/tutorial/query-documents/), You can select documents based on field equality or use comparison operators \(`$lt`, `$lte`, `$gt`, `$gte`, `$in`, `$nin`, `$ne`, `$eq`\). You can also use logical operators `$or`, `$and`, `$not` and `$where`.
 
 ## Field equality
 
@@ -187,7 +187,7 @@ db.find({
 
 **`Syntax:`** `{ <fieldName> : { $in: [<value1>, <value2>, ... etc] } }`.
 
-**Explanation**:  The `$in` operator selects the documents where the value of a field equals any value in the specified array.
+**Explanation**: The `$in` operator selects the documents where the value of a field equals any value in the specified array.
 {% endtab %}
 
 {% tab title="Example" %}
@@ -231,7 +231,7 @@ db.find({ filter: { name: { $in: ["alex", "john", "dina"] } } });
 
 **`Syntax:`** `{ <fieldName> : { $exists: <boolean> } }`.
 
-**Explanation**:  When `<boolean>` is true, `$exists` matches the documents that contain the field, including documents where the field value is `null`. If `<boolean>` is false, the query returns only the documents that do not contain the field.
+**Explanation**: When `<boolean>` is true, `$exists` matches the documents that contain the field, including documents where the field value is `null`. If `<boolean>` is false, the query returns only the documents that do not contain the field.
 {% endtab %}
 
 {% tab title="Example" %}
@@ -288,7 +288,7 @@ db.find({ filter: { name: { $type: "string" } } });
 
 **`Syntax:`** `{ <fieldName> : { $mod: [divisor, remainder] } }`.
 
-**Explanation**:  Select documents where the value of a field divided by a divisor has the specified remainder \(i.e. perform a modulo operation to select documents\).
+**Explanation**: Select documents where the value of a field divided by a divisor has the specified remainder \(i.e. perform a modulo operation to select documents\).
 {% endtab %}
 
 {% tab title="Example" %}
@@ -320,7 +320,7 @@ db.find({ filter: {
 
 **`Syntax:`** `{ <fieldName> : { $regex: <RegExp> } }`.
 
-**Explanation**:  Selects documents which tests `true` for a given regular expression.
+**Explanation**: Selects documents which tests `true` for a given regular expression.
 {% endtab %}
 
 {% tab title="Example" %}
@@ -342,7 +342,7 @@ db.find({ filter: { name: { $regex: /^a/i } } });
 
 **`Syntax:`** `{ <fieldName> : { $all: [<value1>, <value2>,...etc] } }`.
 
-**Explanation**:  The `$all` operator selects the documents where the value of a field is an array that contains all the specified elements.
+**Explanation**: The `$all` operator selects the documents where the value of a field is an array that contains all the specified elements.
 {% endtab %}
 
 {% tab title="Example" %}
@@ -362,7 +362,7 @@ db.find({ filter: { tags: { $all: [ "music", "art" ] } } });
 
 **`Syntax:`** `{<fieldName>:{$elemMatch:{<query1>,<query2>,...etc}}}`.
 
-**Explanation**:  The `$elemMatch` operator matches documents that contain an array field with at least one element that matches all the specified query criteria.
+**Explanation**: The `$elemMatch` operator matches documents that contain an array field with at least one element that matches all the specified query criteria.
 {% endtab %}
 
 {% tab title="Example" %}
@@ -394,7 +394,7 @@ db.find({
 
 **`Syntax:`** `{ <fieldName> : { $size: number } }`.
 
-**Explanation**:  The `$size` operator matches any array with the number of elements \(length of the array\) specified by the argument.
+**Explanation**: The `$size` operator matches any array with the number of elements \(length of the array\) specified by the argument.
 {% endtab %}
 
 {% tab title="Example" %}
@@ -429,7 +429,7 @@ The array fields has the operators `$all`, `$elemMatch` and `$size` specific for
 
 {% tabs %}
 {% tab title="Specification" %}
-**`Syntax:`** 
+**`Syntax:`**
 
 ```typescript
 {
@@ -442,7 +442,7 @@ The array fields has the operators `$all`, `$elemMatch` and `$size` specific for
 }
 ```
 
-**Explanation**:  `$and` performs a logical `AND` operation on an array of two or more expressions \(e.g. `<field level query 1>`,  `<field level query 2>` , etc.\) and selects the documents that satisfy all the expressions in the array. The `$and` operator uses short-circuit evaluation. If the first expression \(e.g.  `<field level query 1>`\) evaluates to false, TyDB will not evaluate the remaining expressions.
+**Explanation**: `$and` performs a logical `AND` operation on an array of two or more expressions \(e.g. `<field level query 1>`, `<field level query 2>` , etc.\) and selects the documents that satisfy all the expressions in the array. The `$and` operator uses short-circuit evaluation. If the first expression \(e.g. `<field level query 1>`\) evaluates to false, TyDB will not evaluate the remaining expressions.
 {% endtab %}
 
 {% tab title="Example" %}
@@ -466,7 +466,7 @@ db.find({ filter: {
 
 {% tabs %}
 {% tab title="Specification" %}
-**`Syntax:`** 
+**`Syntax:`**
 
 ```typescript
 {
@@ -503,7 +503,7 @@ db.find({ filter: {
 
 {% tabs %}
 {% tab title="Specification" %}
-**`Syntax:`** 
+**`Syntax:`**
 
 ```typescript
 {
@@ -540,7 +540,7 @@ db.find({ filter: {
 
 {% tabs %}
 {% tab title="Specification" %}
-**`Syntax:`** 
+**`Syntax:`**
 
 ```typescript
 {
@@ -548,7 +548,7 @@ db.find({ filter: {
 }
 ```
 
-**Explanation:** Matches the documents that when evaluated by the given function, would return `true`. ****The `$where` provides greater flexibility, but requires that the database processes the JavaScript expression or function for each document in the collection. Reference the document in the JavaScript expression or function using `this`.
+**Explanation:** Matches the documents that when evaluated by the given function, would return `true`. _\*\*_The `$where` provides greater flexibility, but requires that the database processes the JavaScript expression or function for each document in the collection. Reference the document in the JavaScript expression or function using `this`.
 {% endtab %}
 
 {% tab title="Example" %}
@@ -572,7 +572,7 @@ db.find({ filter: {
 
 {% tabs %}
 {% tab title="Specification" %}
-**`Syntax:`** 
+**`Syntax:`**
 
 ```typescript
 {
@@ -613,6 +613,4 @@ db.find({ filter: {
 ```
 {% endtab %}
 {% endtabs %}
-
-
 
