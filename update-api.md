@@ -641,11 +641,214 @@ db.update({
 
 ### `$each`
 
+{% tabs %}
+{% tab title="Specification" %}
+**Applies to:** `Array`_._
+
+**`Syntax:`**
+
+```typescript
+{
+    $push: {
+        <fieldname>: {
+            // multiple fields
+            $each: [<value1>, <value2>, ...etc]
+        },
+        ... etc
+    }
+}
+```
+
+**Explanation**: Modifies the `$push` and `$addToSet` operators to append multiple items for array updates.
+{% endtab %}
+
+{% tab title="Example" %}
+```typescript
+/**
+* Update a document where age is 1
+* by appending "a" & "b" to "tags"
+*/
+
+db.update({
+    filter: {age: 1},
+    update: {
+        $push: {
+            tags: {
+                $each: ["a", "b"]
+            }
+        }
+    }
+});
+```
+{% endtab %}
+{% endtabs %}
+
 ### `$slice`
+
+{% tabs %}
+{% tab title="Specification" %}
+**Applies to:** `Array`_._
+
+**`Syntax:`**
+
+```typescript
+{
+    $push: {
+        <fieldname>: {
+            // multiple fields
+            $each: [<value1>, <value2>, ...etc],
+            $slice: <number>
+        },
+        ... etc
+    }
+}
+```
+
+**Explanation**: Modifies the `$push` operator to limit the size of updated arrays.
+
+Must be used with `$each` modifier. Otherwise it will throw. You can pass an empty array \(`[ ]`\) to the `$each` modifier such that only the `$slice` modifier has an effect.
+{% endtab %}
+
+{% tab title="Example" %}
+```typescript
+/**
+* Update a document where age is 1
+* by appending "a" & "b" to "tags"
+* unless the size of the array goes
+* over 6 elements
+*/
+
+db.update({
+    filter: {age: 1},
+    update: {
+        $push: {
+            tags: {
+                $each: ["a", "b"],
+                $slice: 6
+            }
+        }
+    }
+});
+```
+{% endtab %}
+{% endtabs %}
+
+### `$position`
+
+{% tabs %}
+{% tab title="Specification" %}
+**Applies to:** `Array`_._
+
+**`Syntax:`**
+
+```typescript
+{
+    $sort: {
+        <fieldname>: {
+            // multiple fields
+            $each: [<value1>, <value2>, ...etc],
+            $position: <number>
+        },
+        ... etc
+    }
+}
+```
+
+**Explanation**: The `$position` modifier specifies the location in the array at which the `$push` operator insert elements. Without the `$position` modifier, the `$push` operator inserts elements to the end of the array.
+
+Must be used with `$each` modifier.
+{% endtab %}
+
+{% tab title="Example" %}
+```typescript
+/**
+* Update a document where age is 1
+* by appending "a" & "b" to "tags"
+* at the start of the array,
+* while limiting the array size to 6
+*/
+
+db.update({
+    filter: {age: 1},
+    update: {
+        $push: {
+            tags: {
+                $each: ["a", "b"],
+                $position: 0,
+                $slice: 6
+            }
+        }
+    }
+});
+```
+{% endtab %}
+{% endtabs %}
 
 ### `$sort`
 
-### `$position`
+{% tabs %}
+{% tab title="Specification" %}
+**Applies to:** `Array`_._
+
+**`Syntax:`**
+
+```typescript
+{
+    $sort: {
+        <fieldname>: {
+            // multiple fields
+            $each: [<value1>, <value2>, ...etc],
+            $sort: -1 | 1
+            // or when sorting embedded
+            // documents inside the array
+            $sort: {
+                <fieldName1>: 1 | -1,
+                <fieldName2>: 1 | -1
+            }
+        },
+        ... etc
+    }
+}
+```
+
+**Explanation**: The `$sort` modifier orders the elements of an array during a `$push` operation. Pass `1` to sort ascending and `-1` to sort descending.
+
+Must be used with `$each` modifier. Otherwise it will throw. You can pass an empty array \(`[ ]`\) to the `$each` modifier such that only the `$sort` modifier has an effect.
+{% endtab %}
+
+{% tab title="Example" %}
+```typescript
+/**
+* Update a document where name is "john"
+* by appending a new child to "children"
+* at the start of the array
+* then sorting the children by
+* the "age" / ascending
+* and the "name" / descending
+* then allow only 10 children in the array
+* by removing the last elements that goes
+* over 10
+*/
+
+db.update({
+	filter: { name: "john" },
+	update: {
+		$push: {
+			children: {
+				$each: [{ name: "tim", age: 3 }],
+				$position: 0,
+				$sort: {
+					age: 1,
+					name: -1,
+				},
+				$slice: 10
+			},
+		},
+	},
+});
+```
+{% endtab %}
+{% endtabs %}
 
 
 

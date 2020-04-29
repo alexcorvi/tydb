@@ -35,5 +35,3 @@ And this is how TyDB was conceived, under-the-hood, it is actually NeDB, but wit
 * Multiple instances can connect on the same database.
 * Can be served over the network.
 
-
-
