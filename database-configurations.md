@@ -49,6 +49,8 @@ When connecting to a database through the network, the instance will only act li
 In such case, the only database configurations that matters are the `ref` and the `model`, all other configurations will be ignored.
 {% endhint %}
 
+![](.gitbook/assets/image.png)
+
 ## `model`
 
 **`type:`** `class extends BaseModel`
