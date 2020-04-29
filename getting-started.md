@@ -63,5 +63,7 @@ await mydb.insert([
 await mydb.delete({ filter: { name: "john" } });
 ```
 
-Next up: familiarize yourself with database configurations and database operations.
+The above example creates an in-memory-only database, so the data will not persisted and will be lost once the application is close or the instance is lost.
+
+The following chart puts other ways to connect to a database into perspective:
 
