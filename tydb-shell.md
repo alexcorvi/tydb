@@ -1,2 +1,0 @@
-# TyDB Shell
-
