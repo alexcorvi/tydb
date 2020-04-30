@@ -165,4 +165,5 @@ but you can not update getter properties nor methods, and it would result in une
 * Never try to directly set a computed property or update it via the update operators.
 * Use  `Model.new` in conjugation with the [upsert operator `$setOnInsert`](update-api.md#usdsetoninsert).
 * Write computed properties \(getter methods\) to simplify your queries.
+* Always defined defaults for your fields in the model.
 
