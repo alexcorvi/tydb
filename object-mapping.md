@@ -6,7 +6,7 @@ description: Utilize the power of TypeScript classes in your models
 
 ### What is a model
 
-Let's suppose we have this structure for our document
+Let's suppose we have this basic structure for our document
 
 ```javascript
 {
