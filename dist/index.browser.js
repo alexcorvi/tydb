@@ -5179,7 +5179,7 @@
 		}
 		appendData(data) {
 			return __awaiter(this, void 0, void 0, function* () {
-				yield set(hash(data), data, databases["indexes"]);
+				yield set(hash(data), data, databases["data"]);
 			});
 		}
 	}
