@@ -6,3 +6,11 @@ description: >-
 
 # Persistence Adapters
 
+By default
+
+### File System persistence adapter
+
+### IndexedDB persistence adapter
+
+### Write your own persistence adapter
+
