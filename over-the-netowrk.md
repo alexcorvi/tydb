@@ -65,7 +65,7 @@ module.exports = {
 			// add createdAt & updatedAt fields
 			timestampData: true,
 			// use a persistence adapter
-			// (defaults to file system)
+			// (defaults to memory-only)
 			persistence_adapter: FS_Persistence_Adapter,
 			// set an interval for auto compaction
 			// defaults to 0 = no auto compaction
