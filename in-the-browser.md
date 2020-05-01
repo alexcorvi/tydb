@@ -56,7 +56,7 @@ const db = new tydb.Database({
 
 ```
 
-[Demo in JSFiddle](https://jsfiddle.net/alexcorvi/gwq53jfm/31/)
+[Demo in JSFiddle](https://jsfiddle.net/alexcorvi/gwq53jfm/)
 
 ## Connecting to a remote instance
 
