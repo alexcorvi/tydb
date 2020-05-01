@@ -1,4 +1,5 @@
-/// <reference types="glob" />
+/// <reference types="mocha" />
+/// <reference types="node" />
 import Q from "p-queue";
 declare namespace customUtils {
     function uid(): string;
@@ -145,7 +146,7 @@ type Keys<O> = keyof O;
 type Partial<T> = {
     [P in keyof T]?: T[P];
 };
-interface AnyFieldLevelQueryOperators<V> {
+interface AnyFieldOperators<V> {
     $type?: "string" | "number" | "boolean" | "undefined" | "array" | "null" | "date" | "object";
     /**
      * Specifies equality condition. The $eq operator matches documents where the value of a field equals the specified value.
@@ -153,30 +154,10 @@ interface AnyFieldLevelQueryOperators<V> {
      */
     $eq?: V;
     /**
-     * $gt selects those documents where the value of the field is greater than (i.e. >) the specified value.
-     * {field: {$gt:value}}
-     */
-    $gt?: V;
-    /**
-     * $gte selects the documents where the value of the field is greater than or equal to (i.e. >=) a specified value
-     * {field: {$gte:value}}
-     */
-    $gte?: V;
-    /**
      * The $in operator selects the documents where the value of a field equals any value in the specified array.
      * { field: { $in: [<value1>, <value2>, ... <valueN> ] } }
      */
     $in?: V[];
-    /**
-     * $lt selects the documents where the value of the field is less than (i.e. <) the specified value.
-     * {field: {$lt:value}}
-     */
-    $lt?: V;
-    /**
-     * $lte selects the documents where the value of the field is less than or equal to (i.e. <=) the specified value.
-     * {field: {$lte:value}}
-     */
-    $lte?: V;
     /**
      * $ne selects the documents where the value of the field is not equal (i.e. !=) to the specified value. This includes documents that do not contain the field.
      * {field: {$ne:value}}
@@ -191,24 +172,49 @@ interface AnyFieldLevelQueryOperators<V> {
      * $not performs a logical NOT operation on the specified <operator-expression> and selects the documents that do not match the <operator-expression>. This includes documents that do not contain the field.
      * { field: { $not: { <operator-expression> } } }
      */
-    $not?: AnyFieldLevelQueryOperators<V>;
+    $not?: FieldLevelQueryOperators<V>;
     /**
      * When <boolean> is true, $exists matches the documents that contain the field, including documents where the field value is null. If <boolean> is false, the query returns only the documents that do not contain the field.
      * { field: { $exists: <boolean> } }
      */
     $exists?: boolean;
-    /**
-     * Select documents where the value of a field divided by a divisor has the specified remainder (i.e. perform a modulo operation to select documents). To specify a $mod expression, use the following syntax:
-     * { field: { $mod: [ divisor, remainder ] } }
-     */
-    $mod?: [number, number];
+}
+interface StringOperators<V> extends AnyFieldOperators<V> {
     /**
      * Provides regular expression capabilities for pattern matching strings in queries. MongoDB uses Perl compatible regular expressions (i.e. “PCRE” ) version 8.41 with UTF-8 support.
      * {field:{$regex: /pattern/<options>}}
      */
     $regex?: RegExp;
 }
-interface ArrayFieldLevelQueryOperators<V> extends AnyFieldLevelQueryOperators<V> {
+interface NumberOperators<V> extends AnyFieldOperators<V> {
+    /**
+     * $gt selects those documents where the value of the field is greater than (i.e. >) the specified value.
+     * {field: {$gt:value}}
+     */
+    $gt?: V;
+    /**
+     * $gte selects the documents where the value of the field is greater than or equal to (i.e. >=) a specified value
+     * {field: {$gte:value}}
+     */
+    $gte?: V;
+    /**
+     * $lt selects the documents where the value of the field is less than (i.e. <) the specified value.
+     * {field: {$lt:value}}
+     */
+    $lt?: V;
+    /**
+     * $lte selects the documents where the value of the field is less than or equal to (i.e. <=) the specified value.
+     * {field: {$lte:value}}
+     */
+    $lte?: V;
+    /**
+     * Select documents where the value of a field divided by a divisor has the specified remainder (i.e. perform a modulo operation to select documents). To specify a $mod expression, use the following syntax:
+     * { field: { $mod: [ divisor, remainder ] } }
+     */
+    $mod?: [number, number];
+}
+type InnerArrayOperators<V> = V extends Date ? NumberOperators<V> : V extends number ? NumberOperators<V> : V extends string ? StringOperators<V> : AnyFieldOperators<V>;
+interface TotalArrayOperators<V> extends AnyFieldOperators<V> {
     /**
      * The $all operator selects the documents where the value of a field is an array that contains all the specified elements.
      *{ field: { $all: [ <value1> , <value2> ... ] } }
@@ -218,17 +224,13 @@ interface ArrayFieldLevelQueryOperators<V> extends AnyFieldLevelQueryOperators<V
      * The $elemMatch operator matches documents that contain an array field with at least one element that matches all the specified query criteria.
      * { <field>: { $elemMatch: { <query1>, <query2>, ... } } }
      */
-    $elemMatch?: AnyFieldLevelQueryOperators<V>;
+    $elemMatch?: FieldLevelQueryOperators<V>;
     /**
      * The $size operator matches any array with the number of elements specified by the argument. For example:{ field: { $size: 2 } }
      */
     $size?: number;
-    /**
-     * $not performs a logical NOT operation on the specified <operator-expression> and selects the documents that do not match the <operator-expression>. This includes documents that do not contain the field.
-     * { field: { $not: { <operator-expression> } } }
-     */
-    $not?: ArrayFieldLevelQueryOperators<V>;
 }
+type ArrayOperators<V> = TotalArrayOperators<V> & InnerArrayOperators<V>;
 interface TopLevelQueryOperators<S> {
     /**
      * $and performs a logical AND operation on an array of two or more expressions (e.g. <expression1>, <expression2>, etc.) and selects the documents that satisfy all the expressions in the array. The $and operator uses short-circuit evaluation. If the first expression (e.g. <expression1>) evaluates to false, MongoDB will not evaluate the remaining expressions.
@@ -241,7 +243,7 @@ interface TopLevelQueryOperators<S> {
      */
     $nor?: SchemaKeyFilters<S>[];
     /**
-     * The $or operator performs a logical OR operation on an array of two or more <expressions> and selects the documents that satisfy at least one of the <expressions>. The $or has the following syntax:
+     * The $or operator performs a logical OR operation on an array of two or more expressions and selects the documents that satisfy at least one of the expressions. The $or has the following syntax:
      * { $or: [ { <expression1> }, { <expression2> }, ... , { <expressionN> } ] }
      */
     $or?: SchemaKeyFilters<S>[];
@@ -257,8 +259,9 @@ interface TopLevelQueryOperators<S> {
         [key: string]: SchemaKeyFilters<any>;
     };
 }
+type FieldLevelQueryOperators<V> = V extends Array<any> ? ArrayOperators<V[0]> : V extends Date ? NumberOperators<V> : V extends number ? NumberOperators<V> : V extends string ? StringOperators<V> : AnyFieldOperators<V>;
 type SchemaKeyFilters<S> = Partial<{
-    [key in Keys<S>]: (S[key] extends Array<any> ? ArrayFieldLevelQueryOperators<S[key][0]> : AnyFieldLevelQueryOperators<S[key]>) | S[key];
+    [key in Keys<S>]: FieldLevelQueryOperators<S[key]> | S[key];
 }>;
 type Filter<S> = SchemaKeyFilters<S> | TopLevelQueryOperators<S>;
 type SchemaKeySort<S> = Partial<{
@@ -305,19 +308,23 @@ interface UpsertOperators<S> extends UpdateOperators<S> {
      * { $setOnInsert: { <field1>: <value1>, ... } },
      *
      */
-    $setOnInsert: Partial<S>;
+    $setOnInsert: S;
 }
 interface UpdateOperators<S> {
     /**
      * Increments the value of the field by the specified amount.
      * { $inc: { <field1>: <amount1>, <field2>: <amount2>, ... } }
      */
-    $inc?: UpdateOperatorsOnSchema<S, number>;
+    $inc?: Partial<{
+        [Key in Keys<S>]: S[Key] extends number ? number : never;
+    }>;
     /**
      * Multiplies the value of the field by the specified amount.
      * { $mul: { field: <number> } }
      */
-    $mul?: UpdateOperatorsOnSchema<S, number>;
+    $mul?: Partial<{
+        [Key in Keys<S>]: S[Key] extends number ? number : never;
+    }>;
     /**
      * Renames a field.
      * {$rename: { <field1>: <newName1>, <field2>: <newName2>, ... } }
@@ -340,25 +347,33 @@ interface UpdateOperators<S> {
         [key in Keys<S>]: "";
     } & {
         $deep: {
-            [key: string]: any;
+            [key: string]: "";
         };
     }>;
     /**
      * Only updates the field if the specified value is less than the existing field value.
      * { $min: { <field1>: <value1>, ... } }
      */
-    $min?: Partial<S>;
+    $min?: Partial<{
+        [Key in Keys<S>]: S[Key] extends number ? S[Key] : S[Key] extends Date ? S[Key] : never;
+    }>;
     /**
      * Only updates the field if the specified value is greater than the existing field value.
      * { $max: { <field1>: <value1>, ... } }
      */
-    $max?: Partial<S>;
+    $max?: Partial<{
+        [Key in Keys<S>]: S[Key] extends number ? S[Key] : S[Key] extends Date ? S[Key] : never;
+    }>;
     /**
      * Sets the value of a field to current date, either as a Date or a Timestamp.
      * { $currentDate: { <field1>: <typeSpecification1>, ... } }
      */
-    $currentDate?: UpdateOperatorsOnSchema<S, true | {
-        $type: "timestamp" | "date";
+    $currentDate?: Partial<{
+        [Key in Keys<S>]: S[Key] extends Date ? true | {
+            $type: "date";
+        } : S[Key] extends number ? {
+            $type: "timestamp";
+        } : never;
     }>;
     /**
      * Adds elements to an array only if they do not already exist in the set.
@@ -381,7 +396,7 @@ interface UpdateOperators<S> {
      * { $pull: { <field1>: <value|condition>, <field2>: <value|condition>, ... } }
      */
     $pull?: Partial<{
-        [Key in Keys<S>]: S[Key] extends Array<infer U> ? Partial<U> | AnyFieldLevelQueryOperators<U> : never;
+        [Key in Keys<S>]: S[Key] extends Array<infer U> ? Partial<U> | FieldLevelQueryOperators<U> : never;
     }>;
     /**
      * The $pullAll operator removes all instances of the specified values from an existing array. Unlike the $pull operator that removes elements by specifying a query, $pullAll removes elements that match the listed values.
@@ -1127,9 +1142,7 @@ declare class Database<S extends BaseModel<S>> {
     private ref;
     private _datastore;
     private reloadBeforeOperations;
-    model: (new () => S) & {
-        new: (json: S) => S;
-    };
+    private model;
     loaded: Promise<boolean>;
     constructor(options: DatabaseConfigurations<S>);
     private reloadFirst;
@@ -1192,13 +1205,15 @@ declare class Database<S extends BaseModel<S>> {
     /**
      * Create an index specified by options
      */
-    createIndex(options: EnsureIndexOptions): Promise<{
+    createIndex(options: EnsureIndexOptions & {
+        fieldName: keyof NFP<S>;
+    }): Promise<{
         affectedIndex: string;
     }>;
     /**
      * Remove an index by passing the field name that it is related to
      */
-    removeIndex(fieldName: string): Promise<{
+    removeIndex(fieldName: string & keyof NFP<S>): Promise<{
         affectedIndex: string;
     }>;
     /**
@@ -1223,7 +1238,7 @@ declare class Database<S extends BaseModel<S>> {
      */
     resetAutoCompaction(interval: number): Promise<{}>;
     /**
-     * Put one document
+     * Create document
      */
     create: (docs: S[]) => Promise<{
         docs: S[];
@@ -1238,13 +1253,9 @@ declare class Database<S extends BaseModel<S>> {
                 [K in keyof S]: S[K] extends Function ? never : K;
             }[keyof S]]: Pick<S, {
                 [K in keyof S]: S[K] extends Function ? never : K;
-            }[keyof S]>[key] | (Pick<S, {
+            }[keyof S]>[key] | FieldLevelQueryOperators<Pick<S, {
                 [K in keyof S]: S[K] extends Function ? never : K;
-            }[keyof S]>[key] extends any[] ? ArrayFieldLevelQueryOperators<Pick<S, {
-                [K in keyof S]: S[K] extends Function ? never : K;
-            }[keyof S]>[key][0]> : AnyFieldLevelQueryOperators<Pick<S, {
-                [K in keyof S]: S[K] extends Function ? never : K;
-            }[keyof S]>[key]>);
+            }[keyof S]>[key]>;
         }> | TopLevelQueryOperators<Pick<S, {
             [K in keyof S]: S[K] extends Function ? never : K;
         }[keyof S]>> | undefined;
@@ -1269,6 +1280,34 @@ declare class Database<S extends BaseModel<S>> {
             };
         }> | undefined;
     }) => Promise<S[]>;
+    /**
+     * Count the documents matching the specified criteria
+     */
+    number: (filter?: Filter<Pick<S, {
+        [K in keyof S]: S[K] extends Function ? never : K;
+    }[keyof S]>>) => Promise<number>;
+    /**
+     * Delete document(s) that meets the specified criteria
+     */
+    remove: ({ filter, multi }: {
+        filter: Filter<Pick<S, {
+            [K in keyof S]: S[K] extends Function ? never : K;
+        }[keyof S]>>;
+        multi?: boolean | undefined;
+    }) => Promise<{
+        docs: S[];
+        number: number;
+    }>;
+    /**
+     * Create an index specified by options
+     */
+    ensureIndex: (options: EnsureIndexOptions & {
+        fieldName: {
+            [K in keyof S]: S[K] extends Function ? never : K;
+        }[keyof S];
+    }) => Promise<{
+        affectedIndex: string;
+    }>;
     private _externalCall;
 }
 declare module PersistenceWrapper {
@@ -1297,4 +1336,4 @@ declare class FS_Persistence_Adapter extends Persistence {
     appendData(data: string): Promise<void>;
     forcefulUnlock(): Promise<void>;
 }
-export { Database, BaseModel, IDB_Persistence_Adapter, FS_Persistence_Adapter };
+export { Database, DatabaseConfigurations, BaseModel, Persistence, PersistenceEvent, IDB_Persistence_Adapter, FS_Persistence_Adapter };

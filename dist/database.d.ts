@@ -17,9 +17,7 @@ export declare class Database<S extends BaseModel<S>> {
     private ref;
     private _datastore;
     private reloadBeforeOperations;
-    model: (new () => S) & {
-        new: (json: S) => S;
-    };
+    private model;
     loaded: Promise<boolean>;
     constructor(options: DatabaseConfigurations<S>);
     private reloadFirst;
@@ -82,13 +80,15 @@ export declare class Database<S extends BaseModel<S>> {
     /**
      * Create an index specified by options
      */
-    createIndex(options: EnsureIndexOptions): Promise<{
+    createIndex(options: EnsureIndexOptions & {
+        fieldName: keyof NFP<S>;
+    }): Promise<{
         affectedIndex: string;
     }>;
     /**
      * Remove an index by passing the field name that it is related to
      */
-    removeIndex(fieldName: string): Promise<{
+    removeIndex(fieldName: string & keyof NFP<S>): Promise<{
         affectedIndex: string;
     }>;
     /**
@@ -113,7 +113,7 @@ export declare class Database<S extends BaseModel<S>> {
      */
     resetAutoCompaction(interval: number): Promise<{}>;
     /**
-     * Put one document
+     * Create document
      */
     create: (docs: S[]) => Promise<{
         docs: S[];
@@ -123,7 +123,7 @@ export declare class Database<S extends BaseModel<S>> {
      * Find documents that meets a specified criteria
      */
     find: ({ filter, skip, limit, project, sort, }: {
-        filter?: import("./types/common").Partial<{ [key in { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]]: Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>[key] | (Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>[key] extends any[] ? import("./types/filter").ArrayFieldLevelQueryOperators<Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>[key][0]> : import("./types").AnyFieldLevelQueryOperators<Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>[key]>); }> | import("./types").TopLevelQueryOperators<Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>> | undefined;
+        filter?: import("./types/common").Partial<{ [key in { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]]: Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>[key] | import("./types/filter").FieldLevelQueryOperators<Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>[key]>; }> | import("./types").TopLevelQueryOperators<Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>> | undefined;
         skip?: number | undefined;
         limit?: number | undefined;
         sort?: import("./types/common").Partial<{ [key_1 in { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]]: 1 | -1; } & {
@@ -137,5 +137,27 @@ export declare class Database<S extends BaseModel<S>> {
             };
         }> | undefined;
     }) => Promise<S[]>;
+    /**
+     * Count the documents matching the specified criteria
+     */
+    number: (filter?: Filter<Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>>) => Promise<number>;
+    /**
+     * Delete document(s) that meets the specified criteria
+     */
+    remove: ({ filter, multi, }: {
+        filter: Filter<Pick<S, { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S]>>;
+        multi?: boolean | undefined;
+    }) => Promise<{
+        docs: S[];
+        number: number;
+    }>;
+    /**
+     * Create an index specified by options
+     */
+    ensureIndex: (options: EnsureIndexOptions & {
+        fieldName: { [K in keyof S]: S[K] extends Function ? never : K; }[keyof S];
+    }) => Promise<{
+        affectedIndex: string;
+    }>;
     private _externalCall;
 }

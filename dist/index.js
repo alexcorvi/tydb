@@ -1756,54 +1756,52 @@ class BST {
      * Return a function that tells whether a given key matches a lower bound
      */
     getLowerBoundMatcher(query) {
-        const bst = this;
         // No lower bound
         if (!query.hasOwnProperty("$gt") && !query.hasOwnProperty("$gte")) {
             return () => true;
         }
         if (query.hasOwnProperty("$gt") && query.hasOwnProperty("$gte")) {
-            if (bst.compareKeys(query.$gte, query.$gt) === 0) {
-                return (key) => bst.compareKeys(key, query.$gt) > 0;
+            if (this.compareKeys(query.$gte, query.$gt) === 0) {
+                return (key) => this.compareKeys(key, query.$gt) > 0;
             }
-            if (bst.compareKeys(query.$gte, query.$gt) > 0) {
-                return (key) => bst.compareKeys(key, query.$gte) >= 0;
+            if (this.compareKeys(query.$gte, query.$gt) > 0) {
+                return (key) => this.compareKeys(key, query.$gte) >= 0;
             }
             else {
-                return (key) => bst.compareKeys(key, query.$gt) > 0;
+                return (key) => this.compareKeys(key, query.$gt) > 0;
             }
         }
         if (query.hasOwnProperty("$gt")) {
-            return (key) => bst.compareKeys(key, query.$gt) > 0;
+            return (key) => this.compareKeys(key, query.$gt) > 0;
         }
         else {
-            return (key) => bst.compareKeys(key, query.$gte) >= 0;
+            return (key) => this.compareKeys(key, query.$gte) >= 0;
         }
     }
     /**
      * Return a function that tells whether a given key matches an upper bound
      */
     getUpperBoundMatcher(query) {
-        const self = this;
         // No lower bound
         if (!query.hasOwnProperty("$lt") && !query.hasOwnProperty("$lte")) {
             return () => true;
         }
         if (query.hasOwnProperty("$lt") && query.hasOwnProperty("$lte")) {
-            if (self.compareKeys(query.$lte, query.$lt) === 0) {
-                return (key) => self.compareKeys(key, query.$lt) < 0;
+            if (this.compareKeys(query.$lte, query.$lt) === 0) {
+                return (key) => this.compareKeys(key, query.$lt) < 0;
             }
-            if (self.compareKeys(query.$lte, query.$lt) < 0) {
-                return (key) => self.compareKeys(key, query.$lte) <= 0;
+            if (this.compareKeys(query.$lte, query.$lt) < 0) {
+                return (key) => this.compareKeys(key, query.$lte) <= 0;
             }
             else {
-                return (key) => self.compareKeys(key, query.$lt) < 0;
+                return (key) => this.compareKeys(key, query.$lt) < 0;
             }
         }
         if (query.hasOwnProperty("$lt")) {
-            return (key) => self.compareKeys(key, query.$lt) < 0;
+            return (key) => this.compareKeys(key, query.$lt) < 0;
         }
         else {
-            return (key) => self.compareKeys(key, query.$lte) <= 0;
+            return (key) => this.compareKeys(key, query.$lte) <= 0;
         }
     }
     /**
@@ -3580,13 +3578,25 @@ class Database {
     constructor(options) {
         this.reloadBeforeOperations = false;
         /**
-         * Put one document
+         * Create document
          */
         this.create = this.insert;
         /**
          * Find documents that meets a specified criteria
          */
         this.find = this.read;
+        /**
+         * Count the documents matching the specified criteria
+         */
+        this.number = this.count;
+        /**
+         * Delete document(s) that meets the specified criteria
+         */
+        this.remove = this.delete;
+        /**
+         * Create an index specified by options
+         */
+        this.ensureIndex = this.createIndex;
         this.model =
             options.model ||
                 BaseModel;
@@ -3856,25 +3866,21 @@ function fixDeep(input) {
 }
 
 const databases = {};
-function hash(input) {
-    var hash = 0;
-    for (let i = 0; i < input.length; i++) {
-        let chr = input.charCodeAt(i);
-        hash = (hash << 5) - hash + chr;
-        hash |= 0;
-    }
-    return hash.toString();
+function ts() {
+    return Date.now() + "__" + Math.random().toString(36);
 }
 class IDB_Persistence_Adapter extends Persistence {
     init() {
         return __awaiter(this, void 0, void 0, function* () {
-            databases["data"] = new idb.Store(this.ref, "data");
-            databases["indexes"] = new idb.Store(this.ref, "indexes");
+            databases["data"] = new idb.Store(this.ref + ".data");
+            databases["indexes"] = new idb.Store(this.ref + ".indexes");
         });
     }
     readIndexes(event) {
         return __awaiter(this, void 0, void 0, function* () {
-            const keys = yield idb.keys(databases["indexes"]);
+            const keys = (yield idb.keys(databases["indexes"])).sort((a, b) => {
+                return Number(a.split("__")[0]) - Number(b.split("__")[0]);
+            });
             for (let i = 0; i < keys.length; i++) {
                 const key = keys[i];
                 const line = yield idb.get(key, databases["indexes"]);
@@ -3885,7 +3891,9 @@ class IDB_Persistence_Adapter extends Persistence {
     }
     readData(event) {
         return __awaiter(this, void 0, void 0, function* () {
-            const keys = yield idb.keys(databases["data"]);
+            const keys = (yield idb.keys(databases["data"])).sort((a, b) => {
+                return Number(a.split("__")[0]) - Number(b.split("__")[0]);
+            });
             for (let i = 0; i < keys.length; i++) {
                 const key = keys[i];
                 const line = yield idb.get(key, databases["data"]);
@@ -3902,7 +3910,7 @@ class IDB_Persistence_Adapter extends Persistence {
                 yield idb.del(key, databases["indexes"]);
             }
             event.on("writeLine", (data) => __awaiter(this, void 0, void 0, function* () {
-                yield idb.set(hash(data), data, databases["indexes"]);
+                yield idb.set(ts(), data, databases["indexes"]);
             }));
         });
     }
@@ -3914,18 +3922,18 @@ class IDB_Persistence_Adapter extends Persistence {
                 yield idb.del(key, databases["data"]);
             }
             event.on("writeLine", (data) => __awaiter(this, void 0, void 0, function* () {
-                yield idb.set(hash(data), data, databases["data"]);
+                yield idb.set(ts(), data, databases["data"]);
             }));
         });
     }
     appendIndex(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield idb.set(hash(data), data, databases["indexes"]);
+            yield idb.set(ts(), data, databases["indexes"]);
         });
     }
     appendData(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield idb.set(hash(data), data, databases["indexes"]);
+            yield idb.set(ts(), data, databases["data"]);
         });
     }
 }
@@ -4226,3 +4234,5 @@ exports.BaseModel = BaseModel;
 exports.Database = Database;
 exports.FS_Persistence_Adapter = FS_Persistence_Adapter;
 exports.IDB_Persistence_Adapter = IDB_Persistence_Adapter;
+exports.Persistence = Persistence;
+exports.PersistenceEvent = PersistenceEvent;

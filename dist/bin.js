@@ -1755,54 +1755,52 @@ class BST {
      * Return a function that tells whether a given key matches a lower bound
      */
     getLowerBoundMatcher(query) {
-        const bst = this;
         // No lower bound
         if (!query.hasOwnProperty("$gt") && !query.hasOwnProperty("$gte")) {
             return () => true;
         }
         if (query.hasOwnProperty("$gt") && query.hasOwnProperty("$gte")) {
-            if (bst.compareKeys(query.$gte, query.$gt) === 0) {
-                return (key) => bst.compareKeys(key, query.$gt) > 0;
+            if (this.compareKeys(query.$gte, query.$gt) === 0) {
+                return (key) => this.compareKeys(key, query.$gt) > 0;
             }
-            if (bst.compareKeys(query.$gte, query.$gt) > 0) {
-                return (key) => bst.compareKeys(key, query.$gte) >= 0;
+            if (this.compareKeys(query.$gte, query.$gt) > 0) {
+                return (key) => this.compareKeys(key, query.$gte) >= 0;
             }
             else {
-                return (key) => bst.compareKeys(key, query.$gt) > 0;
+                return (key) => this.compareKeys(key, query.$gt) > 0;
             }
         }
         if (query.hasOwnProperty("$gt")) {
-            return (key) => bst.compareKeys(key, query.$gt) > 0;
+            return (key) => this.compareKeys(key, query.$gt) > 0;
         }
         else {
-            return (key) => bst.compareKeys(key, query.$gte) >= 0;
+            return (key) => this.compareKeys(key, query.$gte) >= 0;
         }
     }
     /**
      * Return a function that tells whether a given key matches an upper bound
      */
     getUpperBoundMatcher(query) {
-        const self = this;
         // No lower bound
         if (!query.hasOwnProperty("$lt") && !query.hasOwnProperty("$lte")) {
             return () => true;
         }
         if (query.hasOwnProperty("$lt") && query.hasOwnProperty("$lte")) {
-            if (self.compareKeys(query.$lte, query.$lt) === 0) {
-                return (key) => self.compareKeys(key, query.$lt) < 0;
+            if (this.compareKeys(query.$lte, query.$lt) === 0) {
+                return (key) => this.compareKeys(key, query.$lt) < 0;
             }
-            if (self.compareKeys(query.$lte, query.$lt) < 0) {
-                return (key) => self.compareKeys(key, query.$lte) <= 0;
+            if (this.compareKeys(query.$lte, query.$lt) < 0) {
+                return (key) => this.compareKeys(key, query.$lte) <= 0;
             }
             else {
-                return (key) => self.compareKeys(key, query.$lt) < 0;
+                return (key) => this.compareKeys(key, query.$lt) < 0;
             }
         }
         if (query.hasOwnProperty("$lt")) {
-            return (key) => self.compareKeys(key, query.$lt) < 0;
+            return (key) => this.compareKeys(key, query.$lt) < 0;
         }
         else {
-            return (key) => self.compareKeys(key, query.$lte) <= 0;
+            return (key) => this.compareKeys(key, query.$lte) <= 0;
         }
     }
     /**
@@ -3579,13 +3577,25 @@ class Database {
     constructor(options) {
         this.reloadBeforeOperations = false;
         /**
-         * Put one document
+         * Create document
          */
         this.create = this.insert;
         /**
          * Find documents that meets a specified criteria
          */
         this.find = this.read;
+        /**
+         * Count the documents matching the specified criteria
+         */
+        this.number = this.count;
+        /**
+         * Delete document(s) that meets the specified criteria
+         */
+        this.remove = this.delete;
+        /**
+         * Create an index specified by options
+         */
+        this.ensureIndex = this.createIndex;
         this.model =
             options.model ||
                 BaseModel;
