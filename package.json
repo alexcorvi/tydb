@@ -1,7 +1,7 @@
 {
 	"name": "tydb",
-	"version": "0.1.3",
-	"description": "An Abstraction layer for mongodb for ease of use with TypeScript",
+	"version": "0.1.5",
+	"description": "Strongly-typed, NoSQL, fast, light-weight, embedded, Mongo-like database with built-in ODM.",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"browser": "./dist/index.browser.js",
