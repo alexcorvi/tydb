@@ -579,29 +579,27 @@ export class BST<K, V> {
 	 * Return a function that tells whether a given key matches a lower bound
 	 */
 	getLowerBoundMatcher(query: any) {
-		const bst = this;
-
 		// No lower bound
 		if (!query.hasOwnProperty("$gt") && !query.hasOwnProperty("$gte")) {
 			return () => true;
 		}
 
 		if (query.hasOwnProperty("$gt") && query.hasOwnProperty("$gte")) {
-			if (bst.compareKeys(query.$gte, query.$gt) === 0) {
-				return (key: K) => bst.compareKeys(key, query.$gt) > 0;
+			if (this.compareKeys(query.$gte, query.$gt) === 0) {
+				return (key: K) => this.compareKeys(key, query.$gt) > 0;
 			}
 
-			if (bst.compareKeys(query.$gte, query.$gt) > 0) {
-				return (key: K) => bst.compareKeys(key, query.$gte) >= 0;
+			if (this.compareKeys(query.$gte, query.$gt) > 0) {
+				return (key: K) => this.compareKeys(key, query.$gte) >= 0;
 			} else {
-				return (key: K) => bst.compareKeys(key, query.$gt) > 0;
+				return (key: K) => this.compareKeys(key, query.$gt) > 0;
 			}
 		}
 
 		if (query.hasOwnProperty("$gt")) {
-			return (key: K) => bst.compareKeys(key, query.$gt) > 0;
+			return (key: K) => this.compareKeys(key, query.$gt) > 0;
 		} else {
-			return (key: K) => bst.compareKeys(key, query.$gte) >= 0;
+			return (key: K) => this.compareKeys(key, query.$gte) >= 0;
 		}
 	}
 
@@ -609,29 +607,27 @@ export class BST<K, V> {
 	 * Return a function that tells whether a given key matches an upper bound
 	 */
 	getUpperBoundMatcher(query: any) {
-		const self = this;
-
 		// No lower bound
 		if (!query.hasOwnProperty("$lt") && !query.hasOwnProperty("$lte")) {
 			return () => true;
 		}
 
 		if (query.hasOwnProperty("$lt") && query.hasOwnProperty("$lte")) {
-			if (self.compareKeys(query.$lte, query.$lt) === 0) {
-				return (key: K) => self.compareKeys(key, query.$lt) < 0;
+			if (this.compareKeys(query.$lte, query.$lt) === 0) {
+				return (key: K) => this.compareKeys(key, query.$lt) < 0;
 			}
 
-			if (self.compareKeys(query.$lte, query.$lt) < 0) {
-				return (key: K) => self.compareKeys(key, query.$lte) <= 0;
+			if (this.compareKeys(query.$lte, query.$lt) < 0) {
+				return (key: K) => this.compareKeys(key, query.$lte) <= 0;
 			} else {
-				return (key: K) => self.compareKeys(key, query.$lt) < 0;
+				return (key: K) => this.compareKeys(key, query.$lt) < 0;
 			}
 		}
 
 		if (query.hasOwnProperty("$lt")) {
-			return (key: K) => self.compareKeys(key, query.$lt) < 0;
+			return (key: K) => this.compareKeys(key, query.$lt) < 0;
 		} else {
-			return (key: K) => self.compareKeys(key, query.$lte) <= 0;
+			return (key: K) => this.compareKeys(key, query.$lte) <= 0;
 		}
 	}
 
