@@ -118,7 +118,13 @@ After installation of TyDB and PM2 and creating your configs file \(e.g. `tydb.c
 pm2 start node_modules/.bin/tydb -- tydb.config.js
 ```
 
-Then, when running this command
+If you have TyDB globally installed, then run `npm root -g` to locate the directory in which TyDB is installed. The `bin.js` file is found in `dist` directory, so your pm2 command may look like this:
+
+```text
+pm2 start ~/.nvm/versions/node/v10.15.0/lib/node_modules/tydb/dist/bin.js -- tydb.config.js
+```
+
+After running the pm2 start command, run the log command
 
 ```bash
 pm2 log
