@@ -314,6 +314,21 @@ export class Database<S extends BaseModel<S>> {
 	 */
 	find = this.read;
 
+	/**
+	 * Count the documents matching the specified criteria
+	 */
+	number = this.count;
+
+	/**
+	 * Delete document(s) that meets the specified criteria
+	 */
+	remove = this.delete;
+
+	/**
+	 * Create an index specified by options
+	 */
+	ensureIndex = this.createIndex;
+
 	private async _externalCall<T>(operation: string, body: any): Promise<T> {
 		const response = await fetch(`${this.ref}/${operation}`, {
 			method: "POST",
