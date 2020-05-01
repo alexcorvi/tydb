@@ -20,7 +20,7 @@ class MyModel extends BaseModel {
 export const databases: { [key: string]: DatabaseConfigurations<any> } = {
 	// "mydb" will be used as a namespace for
 	// the database connection URL
-	// (e.g. nedb://http://localhost:3000/mydb)
+	// (e.g. tydb://http://localhost:3000/mydb)
 	mydb: {
 		// "workspace/external" is the file
 		// path that the database
