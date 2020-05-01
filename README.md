@@ -14,6 +14,8 @@
 -   It can run in NodeJS.
 -   It can run in the browser.
 -   It is light weight (45KB).
+-   It can be persistent.
+-   It can be in-memory-only.
 -   It can be embedded.
 -   It can be over-the-network.
 -   It has a built-in object mapping (ODM).
