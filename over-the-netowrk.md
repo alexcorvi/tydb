@@ -10,93 +10,85 @@ description: Configuring an over-the-network instance and connecting to it
 
 When you install tydb locally \(`npm i tydb`\) or globally \(`npm i -g tydb`\), you'll get a CLI tool to run a network exposed instance of TyDB.
 
-Before you run the command, you'll have to setup a configuration file like this
+Before you run the command, you'll have to setup a configuration file, written in typescript, with a name that ends with `.tydb.ts` like this:
 
 {% tabs %}
-{% tab title="tydb.config.js" %}
+{% tab title="config.tydb.ts" %}
 ```javascript
-const tydb = require("tydb");
-const BaseModel = tydb.BaseModel;
-const adapter = tydb.FS_Persistence_Adapter;
+import {
+	BaseModel,
+	FS_Persistence_Adapter,
+	DatabaseConfigurations,
+} from "./src";
 
-/**
-* Define your model
-*/
 class MyModel extends BaseModel {
-	constructor() {
-		super();
-		this.name = "";
-		this.male = false;
-	}
+	name: string = "";
+	male: boolean = false;
+
 	get female() {
 		return !this.male;
 	}
 }
 
-module.exports = {
-	/**
-	 * you can define multiple database
-	 * to be exposed over the network
-	 */
-	databases: {
-		// "ns1" will be used as a namespace for
-		// the database connection URL
-		// (e.g. nedb://http://localhost:3000/ns1)
-		ns1: {
-			// "workspace/external" is the file
-			// path that the database
-			// data will be saved to
-			ref: "a/path/to/a/file",
-			// a model that your documents
-			// will confirm to
-			model: MyModel,
-			afterSerialization: (string) => {
-				// if you want to do any
-				// special encoding/encryption
-				return string;
-			},
-			beforeDeserialization: (string) => {
-				// if you want to do any
-				// special decoding/decryption
-				return string;
-			},
-			// no tolerance for corruption
-			corruptAlertThreshold: 0,
-			// add createdAt & updatedAt fields
-			timestampData: true,
-			// use a persistence adapter
-			// (defaults to memory-only)
-			persistence_adapter: FS_Persistence_Adapter,
-			// set an interval for auto compaction
-			// defaults to 0 = no auto compaction
-			autoCompaction: 0,
+/**
+ * you can define multiple database
+ * to be exposed over the network
+ */
+export const databases: 
+	{ [key: string]: DatabaseConfigurations<any> } 
+	= {
+	// "mydb" will be used as a namespace for
+	// the database connection URL
+	// (e.g. tydb://http://localhost:3000/mydb)
+	mydb: {
+		// "workspace/external" is the file
+		// path that the database
+		// data will be saved to
+		ref: "workspace/external",
+		// a model that your documents
+		// will confirm to
+		model: MyModel,
+		afterSerialization: (string) => {
+			// if you want to do any
+			// special encoding/encryption
+			return string;
 		},
-		ns2: {
-			ref: "a/path/to/a/file2",
-			model: MyModel2,
-			// ... etc
-		}
+		beforeDeserialization: (string) => {
+			// if you want to do any
+			// special decoding/decryption
+			return string;
+		},
+		// no tolerance for corruption
+		corruptAlertThreshold: 0,
+		// add createdAt & updatedAt fields
+		timestampData: true,
+		// use a persistence adapter
+		// (defaults to file system)
+		persistence_adapter: FS_Persistence_Adapter,
+		// set an interval for auto compaction
+		// defaults to 0 = no auto compaction
+		autoCompaction: 0,
 	},
+};
 
-	/**
-	 * fastify server configurations
-	 */
-	fastify: {
-		// listening options
-		// more: https://www.fastify.io/docs/latest/Server/#listen
-		listen: {
-			port: 3000,
-			host: "127.0.0.1",
-		},
-		// server options
-		// more: https://www.fastify.io/docs/latest/Server/
-		server: {
-			logger: false,
-		},
-		// set this to undefined to disable cors
-		// more: https://github.com/fastify/fastify-cors
-		cors: {},
+/**
+ * fastify server configurations
+ */
+export const fastify = {
+	// listening options
+	// more: https://www.fastify.io/docs/latest/Server/#listen
+	listen: {
+		port: 3000,
+		host: "127.0.0.1",
 	},
+	// server options
+	// more: https://www.fastify.io/docs/latest/Server/
+	server: {
+		logger: false,
+	},
+	// set this to undefined to disable cors
+	// more: https://github.com/fastify/fastify-cors
+	cors: {},
 };
 ```
 {% endtab %}
