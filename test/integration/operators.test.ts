@@ -310,107 +310,6 @@ describe("Operators tests", () => {
 					expect(res.findIndex((x) => x.age === 35)).eq(0);
 				}
 			});
-			it("$not", async () => {
-				{
-					// basic
-					const res = await db.find({
-						filter: { age: { $not: { $in: [28, 27, 39] } } },
-					});
-					expect(res.length).eq(1);
-					expect(res.findIndex((x) => x.name === "john")).eq(0);
-				}
-				{
-					// deep
-					const res = await db.find({
-						filter: {
-							$deep: { "props.h": { $not: { $in: [165, 174] } } },
-						},
-					});
-					expect(res.length).eq(1);
-					expect(res.findIndex((x) => x.age === 35)).eq(0);
-				}
-				{
-					// in array
-					const res = await db.find({
-						filter: { events: { $not: { $in: [6, 12] } } },
-					});
-					expect(res.length).eq(1);
-					expect(res.findIndex((x) => x.age === 35)).eq(0);
-				}
-			});
-		});
-		describe("Logical", () => {
-			it("$and", async () => {
-				const res = await db.find({
-					filter: {
-						$and: [
-							{
-								events: {
-									$lte: 12,
-								},
-							},
-							{
-								events: {
-									$gt: 9,
-								},
-							},
-						],
-					},
-				});
-				expect(res.length).eq(1);
-				expect(res[0].name).eq("john");
-			});
-			it("$nor", async () => {
-				const res = await db.find({
-					filter: {
-						$nor: [
-							{
-								age: {
-									$lt: 28,
-								},
-							},
-							{
-								age: {
-									$gt: 30,
-								},
-							},
-						],
-					},
-				});
-				expect(res.length).eq(1);
-				expect(res[0].name).eq("alex");
-			});
-			it("$not", async () => {
-				const res = await db.find({
-					filter: {
-						events: {
-							$not: { $lt: 10 },
-						},
-					},
-				});
-				expect(res.length).eq(1);
-				expect(res[0].name).eq("john");
-			});
-			it("$or", async () => {
-				const res = await db.find({
-					filter: {
-						$or: [
-							{
-								age: {
-									$lt: 28,
-								},
-							},
-							{
-								age: {
-									$gt: 30,
-								},
-							},
-						],
-					},
-				});
-				expect(res.length).eq(2);
-				expect(res.findIndex((x) => x.name === "alex")).eq(-1);
-			});
 		});
 		describe("Element", () => {
 			it("$exists", async () => {
@@ -549,6 +448,79 @@ describe("Operators tests", () => {
 				expect(res[0].name).eq("dina");
 			});
 		});
+		describe("Logical", () => {
+			it("$and", async () => {
+				const res = await db.find({
+					filter: {
+						$and: [
+							{
+								events: {
+									$lte: 12,
+								},
+							},
+							{
+								events: {
+									$gt: 9,
+								},
+							},
+						],
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("john");
+			});
+			it("$nor", async () => {
+				const res = await db.find({
+					filter: {
+						$nor: [
+							{
+								age: {
+									$lt: 28,
+								},
+							},
+							{
+								age: {
+									$gt: 30,
+								},
+							},
+						],
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("alex");
+			});
+			it("$not", async () => {
+				const res = await db.find({
+					filter: {
+						events: {
+							$not: { $lt: 10 },
+						},
+					},
+				});
+				expect(res.length).eq(1);
+				expect(res[0].name).eq("john");
+			});
+			it("$or", async () => {
+				const res = await db.find({
+					filter: {
+						$or: [
+							{
+								age: {
+									$lt: 28,
+								},
+							},
+							{
+								age: {
+									$gt: 30,
+								},
+							},
+						],
+					},
+				});
+				expect(res.length).eq(2);
+				expect(res.findIndex((x) => x.name === "alex")).eq(-1);
+			});
+		});
 	});
 
 	describe("Update Operators", () => {
@@ -590,7 +562,7 @@ describe("Operators tests", () => {
 
 				expect(
 					typeof (await db.find({ filter: { name: "alex" } }))[0]
-						.lastLogin === "number"
+						.lastLoginTimestamp === "number"
 				).eq(true);
 			});
 			it("$inc", async () => {
