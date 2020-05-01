@@ -167,3 +167,19 @@ but you can not update getter properties nor methods, and it would result in une
 * Write computed properties \(getter methods\) to simplify your queries.
 * Always defined defaults for your fields in the model.
 
+{% hint style="info" %}
+As the database is actually a class you can also extends this class before calling it, adding your own methods and keeping your code cleanly OOP.
+
+```typescript
+import { Database } from "tydb";
+
+class Developers extends Database {
+    addDev() {
+    }
+    removeDev() {
+    }
+    // etc...
+}
+```
+{% endhint %}
+
