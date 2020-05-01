@@ -11,8 +11,8 @@
 -   Strong typing is enforced over the query & the update operators.
 -   It is very similar to MongoDB (almost identical).
 -   Written purely in Typescript.
--   It can run in NodeJS.
--   It can run in the browser.
+-   It can run in NodeJS ([Demo](https://runkit.com/alexcorvi/tydb-example)).
+-   It can run in the browser ([Demo](https://jsfiddle.net/alexcorvi/gwq53jfm/)).
 -   It is light weight (45KB).
 -   It can be persistent.
 -   It can be in-memory-only.
