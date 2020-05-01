@@ -23,19 +23,3 @@ TyDB is a database system written in typescript, its goal is to provide a strong
 
 ![Different ways of instantiating the database](.gitbook/assets/image.png)
 
-## Why?
-
-As I was looking through embedded database systems for Nodejs, I found [NeDB](https://github.com/louischatriot/nedb/). however, it is not being maintained. Looking through the source code, I saw some low hanging fruits to improve it, pull requests have been submitted for years without being resolved.
-
-And this is how TyDB was conceived, under-the-hood, it is actually NeDB, but with major improvements, and here's a list of few of them:
-
-* Pluggable persistence layer using persistence adapter.
-* Supports all MongoDB operators.
-* Strongly typed data for all operations.
-* It can deal with large databases, unlike NeDB which had a hard limit of 256 MB.
-* Built-in ODM.
-* Multiple instances can connect on the same database.
-* Can be served over the network.
-
-
-
