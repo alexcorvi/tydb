@@ -1,10 +1,5 @@
 import { Persistence as Base, PersistenceEvent } from "../core/persistence";
 
-/**
- * This file serves solely as the simplest example of how to write adapters
- * follow up with the comments for more
- */
-
 class Memory_Persistence_Adapter extends Base {
 	/**
 	 * You will need two separate storages, e.g. arrays, files, hash maps ... etc
@@ -47,7 +42,7 @@ class Memory_Persistence_Adapter extends Base {
 
 	/**
 	 * Writing: two methods, one for indexes and the other for documents
-	 * each read method should utilize the event parameter,
+	 * each write method should utilize the event parameter,
 	 * and a callback should be provided for when the line is received
 	 * also a callback should be provided for the end of the database is reached
 	 * the on.end callback would be utilized for example for closing a database, a connection, a file ...etc
