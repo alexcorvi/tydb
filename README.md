@@ -1,9 +1,10 @@
 <p align="center">
 	<img src="src/logo.ts.png" width="100">
-	<h1>TyDB</h1>
 	<br>
 	<br>
 </p>
+
+### TyDB
 
 -   It is a NoSQL database.
 -   It is called **TyDB** since it's strongly typed & written in **Typescript**.
