@@ -27,7 +27,8 @@ class Employee extends BaseModel<Employee> {
 	isFemale() {
 		return !this.male;
 	}
-	lastLogin: Date | undefined;
+	lastLogin: Date = new Date();
+	lastLoginTimestamp: number = 0;
 	get female() {
 		return !this.male;
 	}
@@ -309,6 +310,34 @@ describe("Operators tests", () => {
 					expect(res.findIndex((x) => x.age === 35)).eq(0);
 				}
 			});
+			it("$not", async () => {
+				{
+					// basic
+					const res = await db.find({
+						filter: { age: { $not: { $in: [28, 27, 39] } } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.name === "john")).eq(0);
+				}
+				{
+					// deep
+					const res = await db.find({
+						filter: {
+							$deep: { "props.h": { $not: { $in: [165, 174] } } },
+						},
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+				{
+					// in array
+					const res = await db.find({
+						filter: { events: { $not: { $in: [6, 12] } } },
+					});
+					expect(res.length).eq(1);
+					expect(res.findIndex((x) => x.age === 35)).eq(0);
+				}
+			});
 		});
 		describe("Logical", () => {
 			it("$and", async () => {
@@ -545,7 +574,7 @@ describe("Operators tests", () => {
 					filter: { name: "alex" },
 					update: {
 						$currentDate: {
-							lastLogin: { $type: "timestamp" },
+							lastLoginTimestamp: { $type: "timestamp" },
 						},
 					},
 				});
@@ -717,7 +746,7 @@ describe("Operators tests", () => {
 					update: {
 						$unset: {
 							$deep: {
-								"props.h": 192,
+								"props.h": "",
 							},
 						},
 					},
