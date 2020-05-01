@@ -13,14 +13,6 @@ $ npm i tydb
 $ yarn add tydb
 ```
 
-{% hint style="info" %}
-You may also want to install it globally using the `-g` flag if you'd like to use the shell and the server features.
-{% endhint %}
-
-{% hint style="info" %}
-The following code in all of this documentation website is in typescript, as the database is intended to be used with typescript, although it can perfectly work with pure JavaScript.
-{% endhint %}
-
 Now that you have the database installed, lets connect and start using it.
 
 ```typescript
