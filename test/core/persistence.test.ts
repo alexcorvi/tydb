@@ -928,10 +928,11 @@ describe("Persistence", () => {
 			if (process.platform === "win32") {
 				return done();
 			}
-			child_process.execFile(
-				"test/core/test_lac/openFdsLaunch.sh",
+			child_process.exec(
+				"ulimit -n 128 && ts-node test/core/test_lac/openFds.test.ts",
 				(err, stdout) => {
 					if (err) {
+						console.log(err);
 						return done(err);
 					}
 
