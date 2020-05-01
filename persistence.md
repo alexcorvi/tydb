@@ -31,7 +31,7 @@ const mydb = new Database({
 ```typescript
 import { Database, IDB_Persistence_Adapter} from "tydb";
 
-const mydb = new Database({
+const mydb = new Database<MyModel>({
     ref: "a-database-name",
     persistence_adapter: IDB_Persistence_Adapter,
 });

@@ -7,7 +7,7 @@ description: How the default file system persistence has been achieved.
 ```typescript
 import { Database, FS_Persistence_Adapter } from "tydb";
 
-const mydb = new Database({
+const mydb = new Database<MyModel>({
     ref: "a-database-name",
     persistence_adapter: FS_Persistence_Adapter,
 });
