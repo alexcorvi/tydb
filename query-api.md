@@ -423,6 +423,39 @@ The array fields has the operators `$all`, `$elemMatch` and `$size` specific for
 * `$mod`: matches an array if it has a number that when divided by the divider would given the remainder specified by the operator.
 * `$regex`: matches an array of strings that has a string that would return true when tested by the regex given by this operator. 
 
+### Negation
+
+All the above operators can be negated using the `$not` operator.
+
+```typescript
+// find all documents
+// where they have "tags" that is not of length 10
+db.find({ filter: { tags: { $not: { $size: 10 } } } });
+
+// similar to $ne
+db.find({ filter: { name: { $not: { $eq: "ozzy" } } } });
+
+// find documents where the "name" field
+// is a not a string
+db.find({ filter: { name: { $not: { $type: "string" } } } });
+
+// select documents where the "tags"
+// field is an array that doesn't have "music" & "art"
+db.find({ filter: { tags: { $not: { $all: [ "music", "art" ] } } } });
+
+// select documents where the "years" field
+// is an even number
+db.find({ filter: {
+    years: {
+        $not: {
+            $mod: [2,1]
+        }
+    }
+}});
+
+// ...etc 
+```
+
 ## Top level operators
 
 ### `$and`
