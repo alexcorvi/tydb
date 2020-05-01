@@ -227,7 +227,7 @@ export class Database<S extends BaseModel<S>> {
 	 * Create an index specified by options
 	 */
 	public async createIndex(
-		options: EnsureIndexOptions
+		options: EnsureIndexOptions & { fieldName: keyof NFP<S> }
 	): Promise<{ affectedIndex: string }> {
 		if (!this._datastore) {
 			return this._externalCall("createIndex", options);
@@ -240,7 +240,7 @@ export class Database<S extends BaseModel<S>> {
 	 * Remove an index by passing the field name that it is related to
 	 */
 	public async removeIndex(
-		fieldName: string
+		fieldName: string & keyof NFP<S>
 	): Promise<{ affectedIndex: string }> {
 		if (!this._datastore) {
 			return this._externalCall("removeIndex", { fieldName });
