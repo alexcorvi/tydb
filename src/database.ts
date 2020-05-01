@@ -306,7 +306,7 @@ export class Database<S extends BaseModel<S>> {
 	}
 
 	/**
-	 * Put one document
+	 * Create document
 	 */
 	create = this.insert;
 	/**
