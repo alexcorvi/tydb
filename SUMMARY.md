@@ -11,5 +11,4 @@
 * [File System Persistence](file-system-persistence.md)
 * [In the Browser](in-the-browser.md)
 * [Over the Network](over-the-netowrk.md)
-* [Performance](performance.md)
 
