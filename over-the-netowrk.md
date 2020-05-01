@@ -4,7 +4,7 @@ description: Configuring an over-the-network instance and connecting to it
 
 # Over the Network
 
-![How over-the-network connections work](.gitbook/assets/image%20%282%29.png)
+![How over-the-network connections work](.gitbook/assets/screenshot_2.png)
 
 ### Running a network-exposed instance
 
