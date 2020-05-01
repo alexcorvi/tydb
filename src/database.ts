@@ -28,7 +28,7 @@ export class Database<S extends BaseModel<S>> {
 	private ref: string;
 	private _datastore: Datastore<S> | undefined;
 	private reloadBeforeOperations: boolean = false;
-	model: (new () => S) & {
+	private model: (new () => S) & {
 		new: (json: S) => S;
 	};
 	public loaded: Promise<boolean>;
