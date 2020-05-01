@@ -4,24 +4,22 @@ import { Store } from "idb-keyval";
 
 const databases: { [key: string]: Store } = {};
 
-function hash(input: string) {
-	var hash = 0;
-	for (let i = 0; i < input.length; i++) {
-		let chr = input.charCodeAt(i);
-		hash = (hash << 5) - hash + chr;
-		hash |= 0;
-	}
-	return hash.toString();
+function ts() {
+	return Date.now() + "__" + Math.random().toString(36);
 }
 
 export class IDB_Persistence_Adapter extends Base {
 	async init() {
-		databases["data"] = new idb.Store(this.ref, "data");
-		databases["indexes"] = new idb.Store(this.ref, "indexes");
+		databases["data"] = new idb.Store(this.ref + ".data");
+		databases["indexes"] = new idb.Store(this.ref + ".indexes");
 	}
 
 	async readIndexes(event: PersistenceEvent) {
-		const keys = await idb.keys(databases["indexes"]);
+		const keys = (await idb.keys(databases["indexes"])).sort(
+			(a: any, b: any) => {
+				return Number(a.split("__")[0]) - Number(b.split("__")[0]);
+			}
+		);
 		for (let i = 0; i < keys.length; i++) {
 			const key = keys[i];
 			const line = await idb.get<string>(key, databases["indexes"]);
@@ -31,7 +29,11 @@ export class IDB_Persistence_Adapter extends Base {
 	}
 
 	async readData(event: PersistenceEvent) {
-		const keys = await idb.keys(databases["data"]);
+		const keys = (await idb.keys(databases["data"])).sort(
+			(a: any, b: any) => {
+				return Number(a.split("__")[0]) - Number(b.split("__")[0]);
+			}
+		);
 		for (let i = 0; i < keys.length; i++) {
 			const key = keys[i];
 			const line = await idb.get<string>(key, databases["data"]);
@@ -47,7 +49,7 @@ export class IDB_Persistence_Adapter extends Base {
 			await idb.del(key, databases["indexes"]);
 		}
 		event.on("writeLine", async (data) => {
-			await idb.set(hash(data), data, databases["indexes"]);
+			await idb.set(ts(), data, databases["indexes"]);
 		});
 	}
 
@@ -58,14 +60,14 @@ export class IDB_Persistence_Adapter extends Base {
 			await idb.del(key, databases["data"]);
 		}
 		event.on("writeLine", async (data) => {
-			await idb.set(hash(data), data, databases["data"]);
+			await idb.set(ts(), data, databases["data"]);
 		});
 	}
 
 	async appendIndex(data: string) {
-		await idb.set(hash(data), data, databases["indexes"]);
+		await idb.set(ts(), data, databases["indexes"]);
 	}
 	async appendData(data: string) {
-		await idb.set(hash(data), data, databases["indexes"]);
+		await idb.set(ts(), data, databases["data"]);
 	}
 }
