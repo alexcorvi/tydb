@@ -11,6 +11,7 @@ var cors = _interopDefault(require('fastify-cors'));
 var fs = require('fs');
 var ow = _interopDefault(require('ow'));
 var path = require('path');
+var tsNode = require('ts-node');
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
@@ -3864,12 +3865,17 @@ function fixDeep(input) {
     return result;
 }
 
-let configFile = process.argv.find((x) => x.endsWith(".db.js"));
+if (process[Symbol.for("ts-node.register.instance")]) ;
+else {
+    // only register if we're running directly on node
+    tsNode.register();
+}
+let configFile = process.argv.find((x) => x.endsWith(".tydb.ts"));
 let configs = null;
 {
     // path & argument
     if (!configFile) {
-        console.error(`Error: Must be given a single argument, that is a file ending with ".db.js"`);
+        console.error(`Error: Must be given a single argument, that is a file ending with ".tydb.ts"`);
         process.exit(1);
     }
     configFile = path.resolve(configFile);

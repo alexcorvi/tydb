@@ -75,6 +75,7 @@ export default [
 			"fastify",
 			"ow",
 			"fastify-cors",
+			"ts-node",
 		],
 	},
 ];

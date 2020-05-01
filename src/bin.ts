@@ -1,10 +1,16 @@
-import { FS_Persistence_Adapter } from "./adapters/fs-adapter";
 import { Database, DatabaseConfigurations } from "./database";
 import fastify from "fastify";
 import cors from "fastify-cors";
 import * as fs from "fs";
 import ow from "ow";
 import * as path from "path";
+import { register as tsNodeReg } from "ts-node";
+if ((process as any)[Symbol.for("ts-node.register.instance")]) {
+	// if we're already in ts-node do not attempt to register
+} else {
+	// only register if we're running directly on node
+	tsNodeReg();
+}
 
 interface ConfigFile {
 	databases: {
@@ -17,14 +23,14 @@ interface ConfigFile {
 	};
 }
 
-let configFile = process.argv.find((x) => x.endsWith(".db.js"));
+let configFile = process.argv.find((x) => x.endsWith(".tydb.ts"));
 let configs: ConfigFile | null = null;
 
 {
 	// path & argument
 	if (!configFile) {
 		console.error(
-			`Error: Must be given a single argument, that is a file ending with ".db.js"`
+			`Error: Must be given a single argument, that is a file ending with ".tydb.ts"`
 		);
 		process.exit(1);
 	}
