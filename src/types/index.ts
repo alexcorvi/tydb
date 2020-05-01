@@ -1,6 +1,5 @@
 export { BaseModel, NFP } from "./base-schema";
 export {
-	AnyFieldLevelQueryOperators,
 	TopLevelQueryOperators,
 	SchemaKeyFilters,
 	Filter,

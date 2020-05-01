@@ -1,5 +1,5 @@
 import { Keys, Partial } from "./common";
-import { AnyFieldLevelQueryOperators } from "./filter";
+import { FieldLevelQueryOperators } from "./filter";
 
 export interface PushModifiers<V> {
 	/**
@@ -33,7 +33,7 @@ export interface UpsertOperators<S> extends UpdateOperators<S> {
 	 * { $setOnInsert: { <field1>: <value1>, ... } },
 	 *
 	 */
-	$setOnInsert: Partial<S>;
+	$setOnInsert: S;
 }
 
 export interface UpdateOperators<S> {
@@ -41,12 +41,20 @@ export interface UpdateOperators<S> {
 	 * Increments the value of the field by the specified amount.
 	 * { $inc: { <field1>: <amount1>, <field2>: <amount2>, ... } }
 	 */
-	$inc?: UpdateOperatorsOnSchema<S, number>;
+	$inc?: Partial<
+		{
+			[Key in Keys<S>]: S[Key] extends number ? number : never;
+		}
+	>;
 	/**
 	 * Multiplies the value of the field by the specified amount.
 	 * { $mul: { field: <number> } }
 	 */
-	$mul?: UpdateOperatorsOnSchema<S, number>;
+	$mul?: Partial<
+		{
+			[Key in Keys<S>]: S[Key] extends number ? number : never;
+		}
+	>;
 	/**
 	 * Renames a field.
 	 * {$rename: { <field1>: <newName1>, <field2>: <newName2>, ... } }
@@ -70,7 +78,7 @@ export interface UpdateOperators<S> {
 	$unset?: Partial<
 		{ [key in Keys<S>]: "" } & {
 			$deep: {
-				[key: string]: any;
+				[key: string]: "";
 			};
 		}
 	>;
@@ -78,19 +86,40 @@ export interface UpdateOperators<S> {
 	 * Only updates the field if the specified value is less than the existing field value.
 	 * { $min: { <field1>: <value1>, ... } }
 	 */
-	$min?: Partial<S>;
+	$min?: Partial<
+		{
+			[Key in Keys<S>]: S[Key] extends number
+				? S[Key]
+				: S[Key] extends Date
+				? S[Key]
+				: never;
+		}
+	>;
 	/**
 	 * Only updates the field if the specified value is greater than the existing field value.
 	 * { $max: { <field1>: <value1>, ... } }
 	 */
-	$max?: Partial<S>;
+	$max?: Partial<
+		{
+			[Key in Keys<S>]: S[Key] extends number
+				? S[Key]
+				: S[Key] extends Date
+				? S[Key]
+				: never;
+		}
+	>;
 	/**
 	 * Sets the value of a field to current date, either as a Date or a Timestamp.
 	 * { $currentDate: { <field1>: <typeSpecification1>, ... } }
 	 */
-	$currentDate?: UpdateOperatorsOnSchema<
-		S,
-		true | { $type: "timestamp" | "date" }
+	$currentDate?: Partial<
+		{
+			[Key in Keys<S>]: S[Key] extends Date
+				? true | { $type: "date" }
+				: S[Key] extends number
+				? { $type: "timestamp" }
+				: never;
+		}
 	>;
 	/**
 	 * Adds elements to an array only if they do not already exist in the set.
@@ -123,7 +152,7 @@ export interface UpdateOperators<S> {
 	$pull?: Partial<
 		{
 			[Key in Keys<S>]: S[Key] extends Array<infer U>
-				? Partial<U> | AnyFieldLevelQueryOperators<U>
+				? Partial<U> | FieldLevelQueryOperators<U>
 				: never;
 		}
 	>;
