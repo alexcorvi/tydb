@@ -23,7 +23,7 @@ npm i tydb
 or using yarn
 
 ```markup
-yarn i tydb
+yarn add tydb
 ```
 
 {% hint style="info" %}
