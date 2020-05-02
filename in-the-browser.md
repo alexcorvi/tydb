@@ -62,7 +62,7 @@ const db = new tydb.Database({
 
 ```javascript
 const db = new tydb.Database({
-    ref: "tydb://http://example.com/mydb",
+    ref: "nedb://http://example.com/mydb",
     model: MyModel,
 });
 ```

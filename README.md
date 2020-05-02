@@ -20,6 +20,7 @@ TyDB is a database system written in typescript, its goal is to provide a strong
 * Can deal with large data sets \(tested against 1GB of data\) and won't take too much memory.
 * It is fast.
 * It is light-weight \(45 KB, not gzipped\).
+* Based on NeDB.
 
 ![Different ways of instantiating the database](.gitbook/assets/image.png)
 
